@@ -59,3 +59,39 @@ test("the one-click launcher starts the story page and the app, preview by defau
   assert.match(launcher, /ONEVOICE_MODE=--preview/);
   assert.match(launcher, /if \/I "%~1"=="live"/);
 });
+
+test("About packs the glasses into the case, then opens About with the yeti arriving", () => {
+  const scene = read(site, "scene.js");
+  const about = read(site, "about.html");
+  const yeti = read(site, "about-yeti.js");
+  assert.match(html, /id="travel-toggle"[^>]*>ABOUT \/ PACK UP/);
+  assert.match(html, /class="home-link" data-about>About</);
+  assert.match(main, /function openAbout\(\)/);
+  assert.match(main, /world\.travel\(\)/);
+  assert.match(main, /about\.html\?arrival=yeti/);
+  assert.match(main, /is-travelling/);
+  assert.match(scene, /import \{makeSuitcase\} from '\.\/journey\.js'/);
+  assert.match(scene, /createWorld\(canvas, onReady, onPacked\)/);
+  assert.match(scene, /suitcase\.hinge\.rotation\.x/);
+  assert.match(scene, /onPacked\(\)/);
+  assert.match(about, /has\("arrival"\)/);
+  assert.match(yeti, /about-landed/);
+});
+
+test("the case animation fades the landing UI and the About arrival has its styles", () => {
+  const css = read(site, "style.css");
+  assert.match(css, /\.is-travelling \.hero-title/);
+  assert.match(css, /\.about-arriving \.about-yeti\{transform:translate\(62vw/);
+  assert.match(css, /\.about-arriving\.about-landed \.about-yeti/);
+  assert.match(css, /@view-transition\{navigation:auto\}/);
+});
+
+test("no intermediate screen sits between the lens zoom and the app, and the forest is gone", () => {
+  const css = read(site, "style.css");
+  const scene = read(site, "scene.js");
+  assert.doesNotMatch(main, /Ready when you are|lens-destination/);
+  assert.doesNotMatch(css, /lens-destination/);
+  assert.doesNotMatch(scene, /forest/i);
+  assert.match(css, /\.world #conversation \.cafe\{display:none\}/);
+});
+

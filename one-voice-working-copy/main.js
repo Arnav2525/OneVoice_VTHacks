@@ -26,13 +26,20 @@ for(const jump of jumps)jump.addEventListener('click',()=>goToProgress(Number(ju
 $('#scroll-prompt').addEventListener('click',e=>{e.preventDefault();goToProgress(Math.min(1,(Math.floor(current*6)+1)/6));});
 for(const link of document.querySelectorAll('a[href="#conversation"]:not(#scroll-prompt)'))link.addEventListener('click',e=>{e.preventDefault();goToProgress(1);});
 $('#rotate-left').addEventListener('click',()=>world?.rotate(-.3));$('#rotate-right').addEventListener('click',()=>world?.rotate(.3));$('#reset-view').addEventListener('click',()=>world?.reset());
+function openAbout(){
+  if(!world||sceneFailed){location.assign('about.html');return;}
+  goToProgress(0);
+  world.travel();
+}
+$('#travel-toggle').addEventListener('click',openAbout);
+for(const link of document.querySelectorAll('[data-about]'))link.addEventListener('click',e=>{e.preventDefault();openAbout();});
 $('#yeti-hello').addEventListener('click',()=>world?.greet());
 $('#details-toggle').addEventListener('click',()=>{const b=$('#details-toggle'),value=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(value));b.innerHTML=value?'HIDE DETAILS <span>−</span>':'EXPLORE DETAILS <span>+</span>';world?.setDetails(value);});
 $('#light-toggle').addEventListener('click',()=>{const b=$('#light-toggle'),value=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(value));b.innerHTML=value?'SUNSET <span>◐</span>':'DAYLIGHT <span>◐</span>';b.setAttribute('aria-label',value?'Switch to daylight lighting':'Switch to sunset lighting');world?.setSunset(value);});
 for(const pin of document.querySelectorAll('[data-detail]'))pin.addEventListener('click',()=>{world?.reset();goToProgress((Number(pin.dataset.detail)+1)/6);});
 function updateMotion(){const button=$('#motion-toggle');button.textContent=paused?'MOTION OFF':'MOTION ON';button.setAttribute('aria-pressed',String(paused));button.setAttribute('aria-label',paused?'Resume ambient motion':'Pause ambient motion');world?.setPaused(paused);}updateMotion();
 $('#motion-toggle').addEventListener('click',()=>{paused=!paused;updateMotion();});reduced.addEventListener('change',e=>{paused=e.matches;updateMotion();});
-createWorld($('#world-canvas'),()=>$('#loading').classList.add('done')).then(result=>{world=result;updateMotion();world.setDetails($("#details-toggle").getAttribute("aria-pressed")==="true");world.setSunset($("#light-toggle").getAttribute("aria-pressed")==="true");}).catch(error=>{console.error('3D scene could not start',error);sceneFailed=true;$('#loading').classList.add('done');$('#world-error').hidden=false;for(const el of document.querySelectorAll('.scene-controls button'))el.disabled=true;});
+createWorld($('#world-canvas'),()=>$('#loading').classList.add('done'),()=>location.assign('about.html?arrival=yeti')).then(result=>{world=result;$("#travel-toggle").disabled=false;updateMotion();world.setDetails($("#details-toggle").getAttribute("aria-pressed")==="true");world.setSunset($("#light-toggle").getAttribute("aria-pressed")==="true");}).catch(error=>{console.error('3D scene could not start',error);sceneFailed=true;$('#loading').classList.add('done');$('#world-error').hidden=false;for(const el of document.querySelectorAll('.scene-controls button'))el.disabled=true;});
 
 const dialog=$('#connection-dialog');
 const appUrl='http://127.0.0.1:8771/';
@@ -74,3 +81,5 @@ addEventListener('keydown',e=>{
   const next=e.key==='PageDown'?stops.find(y=>y>scrollY+30):stops.reverse().find(y=>y<scrollY-30);
   if(next!==undefined){e.preventDefault();scrollTo({top:next,behavior:reduced.matches?'instant':'smooth'});}
 });
+
+for(const event of ['wheel','touchmove'])worldElement.addEventListener(event,e=>{if(worldElement.classList.contains('is-travelling'))e.preventDefault();},{passive:false});

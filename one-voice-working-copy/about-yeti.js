@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import {makeYeti} from './yeti.js';
 
 const canvas=document.querySelector('#about-yeti-canvas');
+const arriving=document.documentElement.classList.contains('about-arriving');
+const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 
 try{
   const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power'});
@@ -22,6 +24,7 @@ try{
     const time=(now-start)/1000;
     if(!document.hidden){
       yeti.update(time);
+      if(arriving&&!reduced.matches&&time>.55&&time<.65)yeti.greet(time);
       renderer.render(scene,camera);
     }
     frame=requestAnimationFrame(draw);
@@ -31,4 +34,9 @@ try{
 }catch(error){
   console.warn('The About yeti could not render',error);
   canvas.hidden=true;
+}
+
+if(arriving){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.add('about-landed')));
+  const address=new URL(location.href);address.searchParams.delete('arrival');history.replaceState(null,'',address);
 }

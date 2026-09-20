@@ -8,8 +8,9 @@ import { makeTerrain, elevation, hash } from './terrain.js';
 import { makeWind } from './weather.js';
 import { makeYeti } from './yeti.js';
 import { makeAtmosphere } from './atmosphere.js';
+import {makeSuitcase} from './journey.js';
 
-export async function createWorld(canvas, onReady) {
+export async function createWorld(canvas, onReady, onPacked) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
@@ -102,6 +103,15 @@ export async function createWorld(canvas, onReady) {
   let width=0,height=0,progress=0,rotation=0,pitch=0,paused=reduced.matches,visible=true,clock=0,last=performance.now(),raf;
   let pointerX=0,pointerY=0,parallaxX=0,parallaxY=0;
   let sunset=false,warmth=0,details=false;
+  let suitcase=null,travelTime=-1,travelPending=false;
+
+  const travelButton=document.querySelector('#travel-toggle'),travelStatus=document.querySelector('#travel-status');
+  async function travel(){
+    if(travelTime>=0||travelPending)return;
+    travelPending=true;travelButton.disabled=true;travelButton.textContent='PACKING THE GLASSES…';
+    try{suitcase??=await makeSuitcase();scene.add(suitcase.root);rotation=0;pitch=0;}
+    catch(error){travelPending=false;travelButton.disabled=false;travelButton.textContent='ABOUT / PACK UP ↗';travelStatus.textContent='The case could not load. Use the About link to continue.';console.error(error);onPacked();}
+  }
   const dayFog=new THREE.Color('#b5c5d6'),eveningFog=new THREE.Color('#c6b7ac');
   const daySun=new THREE.Color('#fff2df'),eveningSun=new THREE.Color('#ffc388');
   const nightSky=new THREE.Color('#a9bfdf'),daySky=new THREE.Color('#dfeaff');
@@ -120,6 +130,8 @@ export async function createWorld(canvas, onReady) {
   function render(now){
     raf=requestAnimationFrame(render);const dt=Math.min((now-last)/1000,.05);last=now;if(!visible||document.hidden)return;
     if(!paused)clock+=dt;
+    if(travelPending&&suitcase&&progress<.025){travelPending=false;travelTime=0;document.querySelector('.world').classList.add('is-travelling');}
+    if(travelTime>=0)travelTime+=dt*(reduced.matches?3:1);
     const p=progress*6,idx=Math.min(3,Math.floor(p)),u=THREE.MathUtils.smoothstep(p-idx,0,1),a=states[idx],b=states[idx+1],mix=k=>THREE.MathUtils.lerp(a[k],b[k],u),mobile=width<650;
     const displayScale=mobile?.64-.10*THREE.MathUtils.smoothstep(p,0,.8):Math.min(1,width/1100);
     const x=mobile?0:mix('x');
@@ -128,6 +140,17 @@ export async function createWorld(canvas, onReady) {
     product.position.set(x,y+Math.sin(clock*.65)*.055*exploration,0);
     product.scale.setScalar(mix('s')*displayScale);
     product.rotation.set(mix('rx')+pitch*exploration,mix('ry')+rotation*exploration,Math.sin(clock*.3)*.012*exploration);
+    if(travelTime>=0){
+      const t=travelTime,pack=THREE.MathUtils.smoothstep(t,.4,1.7);
+      suitcase.root.visible=true;suitcase.root.position.set(x,-1.6,0);suitcase.root.rotation.y=-.2;suitcase.root.scale.setScalar(displayScale);
+      suitcase.hinge.rotation.x=-1.8*(1-THREE.MathUtils.smoothstep(t,1.6,2.6));
+      product.position.y-=pack*.9;product.scale.multiplyScalar(1-pack*.52);
+      product.scale.multiplyScalar(1-.15*Math.sin(Math.min(t/6,1)*Math.PI));
+      product.rotation.y+=Math.sin(Math.min(t/6,1)*Math.PI)*.35;
+      product.visible=t<2.55;
+      travelStatus.textContent=t<2.6?'PACKING THE GLASSES':'THE YETI IS SHOWING YOU THE STORY';
+      if(t>3.7){travelTime=-1;onPacked();}
+    }
     parallaxX+=(pointerX-parallaxX)*(1-Math.exp(-dt*3));parallaxY+=(pointerY-parallaxY)*(1-Math.exp(-dt*3));
     camera.position.set(Math.sin(Math.min(p,4)/4*Math.PI)*.85+(paused?0:parallaxX*.48*exploration),mix('cy')+(paused?0:parallaxY*.18*exploration),mix('cz'));
     lensCenter.set(-.36,.82,2.622);product.localToWorld(lensCenter);
@@ -151,10 +174,11 @@ export async function createWorld(canvas, onReady) {
     atmosphere.update(clock,warmth);
     wind.update(clock,.7+Math.sin(portalProgress*Math.PI)*1.15);
     yeti.update(clock,parallaxX);
+    if(travelTime>=0){const approach=THREE.MathUtils.smoothstep(travelTime,1.7,3.55);yeti.root.position.set(THREE.MathUtils.lerp(7,2.5,approach),THREE.MathUtils.lerp(elevation(7,-10)-.08,-1.35,approach),THREE.MathUtils.lerp(-10,1.5,approach));yeti.root.rotation.y=THREE.MathUtils.lerp(-.24,-.55,approach);yeti.root.scale.setScalar(1.25+approach*.2);}
     yeti.root.visible=!mobile&&p<3.6;
     pin.copy(yeti.root.position);pin.y-=.2;pin.project(camera);hello.hidden=!yeti.root.visible||p>.6;
     hello.style.left=`${(pin.x*.5+.5)*width}px`;hello.style.top=`${(-pin.y*.5+.5)*height}px`;
-    detailButtons.forEach((button,i)=>{button.hidden=!details||p>3.6||(i===2&&p<2.35);pin.copy(detailPositions[i]);product.localToWorld(pin);pin.project(camera);button.style.left=`${(pin.x*.5+.5)*width}px`;button.style.top=`${(-pin.y*.5+.5)*height}px`;});
+    detailButtons.forEach((button,i)=>{button.hidden=travelTime>=0||!details||p>3.6||(i===2&&p<2.35);pin.copy(detailPositions[i]);product.localToWorld(pin);pin.project(camera);button.style.left=`${(pin.x*.5+.5)*width}px`;button.style.top=`${(-pin.y*.5+.5)*height}px`;});
     earbuds.visible=p>2.35; snowMat.uniforms.time.value=clock;
     projected.set(p<1.6?-.36:1.65,p<1.6?.82:0,p<1.6?2.63:-1.3);product.localToWorld(projected);projected.project(camera);
     const reverse=p>1.6;annotation.classList.toggle('reverse',reverse);
@@ -176,7 +200,7 @@ export async function createWorld(canvas, onReady) {
   } finally {clearTimeout(compileTimer);}
   composer.render();
   raf=requestAnimationFrame(render);onReady();
-  return {setProgress(p){progress=p;},rotate(delta){rotation+=delta;},reset(){rotation=0;pitch=0;},setDetails(value){details=value;},setSunset(value){sunset=value;},greet(){yeti.greet(clock-(paused?.5:0));},setPaused(value){paused=value;},get paused(){return paused;},dispose(){cancelAnimationFrame(raf);renderer.dispose();composer.dispose();}};
+  return {travel,setProgress(p){if(travelTime<0)progress=p;},rotate(delta){rotation+=delta;},reset(){rotation=0;pitch=0;},setDetails(value){details=value;},setSunset(value){sunset=value;},greet(){yeti.greet(clock-(paused?.5:0));},setPaused(value){paused=value;},get paused(){return paused;},dispose(){cancelAnimationFrame(raf);renderer.dispose();composer.dispose();}};
 }
 
 
