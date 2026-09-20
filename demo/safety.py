@@ -7,8 +7,9 @@ import logging
 import queue
 import sys
 import threading
+from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -63,9 +64,21 @@ class YamnetClassifier:
     def __init__(self, monitored_classes: set[str] | None = None) -> None:
         import csv
 
+        import tensorflow as tf
+
+        try:
+            tf.config.set_visible_devices([], "GPU")
+        except RuntimeError as exc:
+            if tf.config.get_visible_devices("GPU"):
+                raise RuntimeError(
+                    "Alarm detection requires CPU-only TensorFlow. "
+                    "Restart the OneVoice server before starting a session."
+                ) from exc
+        self._tf = tf
         import tensorflow_hub as hub
 
-        self._model = hub.load(self._MODEL_URL)
+        with tf.device("/CPU:0"):
+            self._model = hub.load(self._MODEL_URL)
         class_map_path = self._model.class_map_path().numpy().decode("utf-8")
         with open(class_map_path, encoding="utf-8") as f:
             rows = list(csv.reader(f))[1:]
@@ -79,7 +92,8 @@ class YamnetClassifier:
                 f"training rate, not resampled internally); got {sample_rate}"
             )
         waveform = np.asarray(audio, dtype=np.float32)
-        scores, _embeddings, _spectrogram = self._model(waveform)
+        with self._tf.device("/CPU:0"):
+            scores, _embeddings, _spectrogram = self._model(waveform)
 
         mean_scores = np.mean(scores.numpy(), axis=0)
 
@@ -136,21 +150,46 @@ class SafetyMonitor:
         self._active = False
         self._last_event_ts_ms: float | None = None
         self._latest_raw_chunk: AudioChunk | None = None
+        self._playback: deque[np.ndarray] = deque()
+        self._playback_samples = 0
+        self._enqueue_lock = threading.Lock()
+        self._stopping = threading.Event()
 
-        self._queue: queue.Queue[tuple[np.ndarray, float] | None] = queue.Queue()
+        self._queue: queue.Queue[tuple[np.ndarray, float] | None] = queue.Queue(
+            maxsize=1
+        )
         self._worker: threading.Thread | None = None
 
     def start(self) -> None:
+        if self._worker is not None and self._worker.is_alive():
+            return
+        self._stopping.clear()
         self._worker = threading.Thread(
             target=self._worker_loop, name="safety-monitor", daemon=True
         )
         self._worker.start()
 
     def stop(self) -> None:
-        self._queue.put(None)
+        self._stopping.set()
+        self._enqueue(None)
         if self._worker is not None:
             self._worker.join(timeout=10.0)
+            if self._worker.is_alive():
+                raise RuntimeError("Alarm classifier has not stopped")
             self._worker = None
+
+    def _enqueue(self, item: tuple[np.ndarray, float] | None) -> None:
+        with self._enqueue_lock:
+            if item is not None and self._stopping.is_set():
+                return
+            try:
+                self._queue.put_nowait(item)
+            except queue.Full:
+                try:
+                    self._queue.get_nowait()
+                except queue.Empty:
+                    pass
+                self._queue.put_nowait(item)
 
     def write(self, chunk: AudioChunk) -> None:
         samples = _chunk_to_float32(chunk)
@@ -165,6 +204,11 @@ class SafetyMonitor:
             self._buffered_samples += n
             self._samples_since_classify += n
             released = self._check_release_locked(chunk.timestamp_ms)
+            if self._active:
+                self._playback.append(samples.copy())
+                self._playback_samples += n
+                while self._playback_samples > self._sample_rate // 2:
+                    self._playback_samples -= len(self._playback.popleft())
 
             ready = (
                 self._buffered_samples >= self._window_samples
@@ -180,7 +224,7 @@ class SafetyMonitor:
         if released:
             self._fire_state_change(False, None)
         if enqueue is not None:
-            self._queue.put(enqueue)
+            self._enqueue(enqueue)
 
     def _check_release_locked(self, now_ms: float) -> bool:
 
@@ -188,6 +232,8 @@ class SafetyMonitor:
             if (now_ms - self._last_event_ts_ms) / 1000.0 >= self._release_hold_s:
                 self._active = False
                 self._last_event_ts_ms = None
+                self._playback.clear()
+                self._playback_samples = 0
                 return True
         return False
 
@@ -226,11 +272,23 @@ class SafetyMonitor:
             activated_event: SafetyEvent | None = None
             released = False
             with self._lock:
+                latest = self._latest_raw_chunk
+                stale = latest is not None and (
+                    latest.timestamp_ms - ts_ms >= self._release_hold_s * 1000
+                )
+                if self._stopping.is_set() or stale:
+                    continue
                 if qualifies:
                     was_active = self._active
                     self._active = True
                     self._last_event_ts_ms = ts_ms
                     if not was_active:
+                        self._playback.clear()
+                        self._playback_samples = 0
+                        if latest is not None:
+                            samples = _chunk_to_float32(latest).copy()
+                            self._playback.append(samples)
+                            self._playback_samples = len(samples)
                         activated_event = event
                 else:
                     released = self._check_release_locked(ts_ms)
@@ -246,6 +304,26 @@ class SafetyMonitor:
     def latest_raw_chunk(self) -> AudioChunk | None:
         with self._lock:
             return self._latest_raw_chunk
+
+    def take_playback(self, chunk: AudioChunk) -> AudioChunk:
+        output = np.zeros(len(chunk.data), dtype=np.float32)
+        offset = 0
+        with self._lock:
+            while self._playback and offset < len(output):
+                samples = self._playback.popleft()
+                count = min(len(samples), len(output) - offset)
+                output[offset:offset + count] = samples[:count]
+                offset += count
+                self._playback_samples -= count
+                if count < len(samples):
+                    self._playback.appendleft(samples[count:])
+            metadata = (
+                dict(self._latest_raw_chunk.metadata)
+                if self._latest_raw_chunk else {}
+            )
+        return replace(chunk, data=output.tolist(), metadata={
+            **metadata, "alarm_underrun_samples": len(output) - offset,
+        })
 
 class SafetyGatedSink:
 

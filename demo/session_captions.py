@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 def _cuda_visible() -> bool:
     try:
-        import ctranslate2
+        import torch
 
-        return ctranslate2.get_cuda_device_count() > 0
+        return torch.cuda.is_available()
     except Exception:
         return False
 

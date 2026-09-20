@@ -209,6 +209,7 @@ def test_classifier_exception_does_not_kill_worker_thread() -> None:
     monitor.start()
     try:
         monitor.write(_chunk(timestamp_ms=0.0))
+        assert _wait_until(lambda: classifier._invocation_count == 1)
         monitor.write(_chunk(timestamp_ms=20.0))
         assert _wait_until(lambda: monitor.is_active())
     finally:
@@ -247,7 +248,9 @@ def test_on_state_change_exception_does_not_kill_worker_thread() -> None:
     monitor.start()
     try:
         monitor.write(_chunk(timestamp_ms=0.0))
+        assert _wait_until(lambda: callback._invocation_count == 1)
         monitor.write(_chunk(timestamp_ms=100.0))
+        assert _wait_until(lambda: len(classifier.calls) >= 2)
         monitor.write(_chunk(timestamp_ms=200.0))
         assert callback.wait(timeout=2.0)
         assert callback.calls

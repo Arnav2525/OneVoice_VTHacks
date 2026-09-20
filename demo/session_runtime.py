@@ -164,7 +164,9 @@ class SessionSink:
 
     def _write_alarm(self, chunk: Any, status: dict[str, Any]) -> None:
 
-        raw = self.safety.latest_raw_chunk() or chunk
+        take_playback = getattr(self.safety, "take_playback", None)
+        raw = (take_playback(chunk) if callable(take_playback)
+               else self.safety.latest_raw_chunk() or chunk)
         data = [float(value) for value in raw.data]
         if not self._was_allowed:
 

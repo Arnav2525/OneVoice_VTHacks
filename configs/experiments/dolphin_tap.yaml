@@ -35,7 +35,7 @@ audio:
     model_path: checkpoints/gtcrn/gtcrn_simple.onnx
 
 video:
-  device_index: 1
+  device_index: 700
   identity_matching: true
   fps: 30.0
   tracker: iou

@@ -243,6 +243,25 @@ def test_resolve_prefers_large_v3_on_cuda_and_small_on_cpu(monkeypatch):
     assert (settings["device"], settings["model_size"]) == ("cpu", "small")
 
 
+def test_gpu_probe_does_not_load_ctranslate_before_torch(monkeypatch):
+    import builtins
+    from types import SimpleNamespace
+
+    import demo.session_captions as mod
+
+    original_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "ctranslate2":
+            raise AssertionError("Caption probe must not preload CTranslate2 cuDNN")
+        if name == "torch":
+            return SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: True))
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    assert mod._cuda_visible() is True
+
+
 def test_explicit_captions_config_wins(monkeypatch):
     import demo.session_captions as mod
 
