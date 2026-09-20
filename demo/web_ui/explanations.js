@@ -17,7 +17,7 @@
     button.disabled = pending || !available;
     status.textContent = error || explanations?.error || (pending ? "Capturing this moment…" :
       explanations?.count ? `${explanations.count} request(s) captured. Explanations appear with your summary after recording.` :
-        "Capture the camera image and recent captions for Gemini to explain later.");
+        "");
     const items = explanations?.items || [];
     const key = JSON.stringify(items);
     if (key === lastResults) return;

@@ -725,6 +725,9 @@ body[data-phase="isolating"] .stage-bottom .dot {
 }
 .control-dock {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
   align-items: center;
   padding: 8px;
   gap: 7px;
@@ -1257,8 +1260,11 @@ body.high-contrast .record-status {
 body[data-synthetic="false"] .target-label {
   bottom: 10px;
 }
-#explanation-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 12px 0; }
-#explanation-status { font-size: .85rem; color: var(--muted); }
+#explanation-controls { display: flex; align-items: center; }
+#explanation-request { min-height: 44px; padding: 0 12px; border-radius: 24px; }
+#explanation-request:not(:disabled):hover { background: #ffffff0d; }
+#explanation-status { font-size: .85rem; color: var(--muted); text-align: center; }
+#explanation-status:empty { display: none; }
 #explanation-list article { padding: 16px; margin: 12px 0; border: 1px solid #71838c55; border-radius: 14px; }
 #explanation-list h4 { margin: 0; }
 .summary-panel { margin: 24px 0; padding: 24px; border-radius: 24px; }

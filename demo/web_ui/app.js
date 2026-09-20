@@ -333,6 +333,10 @@ function render() {
   ui["session-time"].textContent = elapsed(session.elapsed_s);
   let title = session.title;
   let detail = session.detail;
+  if (phase === "stopped" && detail?.startsWith("Stopped for safety:")) {
+    title = "Stopped for your safety";
+    detail = "An alarm was detected. Start listening again when it is safe.";
+  }
   if (phase === "disconnected") {
     title = "Connection interrupted";
     detail =
@@ -361,6 +365,7 @@ function render() {
       "target_lost",
       "disconnected",
       "closed",
+      "stopped",
     ].includes(phase);
     ui["status-copy"].classList.remove("changing");
     void ui["status-copy"].offsetWidth;

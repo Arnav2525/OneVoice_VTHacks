@@ -225,6 +225,9 @@
             <button id="summary-view" class="text-button" aria-controls="summary-panel" aria-expanded="false">
               View summary
             </button>
+            <span id="explanation-controls">
+              <button id="explanation-request" class="text-button" title="Capture the camera image and recent captions for an explanation with your summary" disabled>Show me what they mean</button>
+            </span>
             <button
               id="clear-button"
               class="icon-button clear-button"
@@ -251,10 +254,7 @@
           </div>
         </div>
 
-        <div id="explanation-controls">
-          <button id="explanation-request" class="text-button" disabled>Show me what they mean</button>
-          <span id="explanation-status" role="status">Start recording to capture a moment for explanation.</span>
-        </div>
+        <p id="explanation-status" role="status"></p>
         <section id="summary-panel" class="summary-panel glass" aria-labelledby="summary-heading" hidden>
           <h2 id="summary-heading" tabindex="-1">Summary</h2>
           <p class="summary-disclosure">Stopping a recording sends its transcript to Gemini.</p>
