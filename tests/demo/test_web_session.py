@@ -474,3 +474,41 @@ def test_speak_endpoint_maps_errors_and_busy_state(local_server, monkeypatch):
     assert status == 502 and "Set the key" in json.loads(data)["error"]
     with server.speak_lock:
         assert _post(server, "/api/speak", {"text": "hi"})[0] == 409
+
+
+def test_ping_lets_only_the_story_page_see_that_the_app_is_running(local_server):
+    server, _ = local_server
+    story = "http://127.0.0.1:4319"
+    status, headers, body = request(server, "/api/ping", headers={"Origin": story})
+    assert status == 200 and json.loads(body) == {"app": "onevoice"}
+    assert headers["Access-Control-Allow-Origin"] == story
+    assert headers["Cross-Origin-Resource-Policy"] == "cross-origin"
+    assert headers["Vary"] == "Origin"
+
+
+def test_ping_gives_other_pages_no_way_to_read_it(local_server):
+    server, _ = local_server
+    status, headers, _ = request(
+        server, "/api/ping", headers={"Origin": "https://evil.example"}
+    )
+    assert status == 200
+    assert "Access-Control-Allow-Origin" not in headers
+    assert headers["Cross-Origin-Resource-Policy"] == "same-origin"
+    status, headers, _ = request(server, "/api/ping")
+    assert "Access-Control-Allow-Origin" not in headers
+
+
+def test_ping_refuses_a_wrong_host_and_no_other_endpoint_opens_up(local_server):
+    server, _ = local_server
+    status, _, _ = request(
+        server,
+        "/api/ping",
+        headers={"Host": "evil.example", "Origin": "http://127.0.0.1:4319"},
+    )
+    assert status == 403
+    for path in ("/api/state", "/api/frame", "/"):
+        status, headers, _ = request(
+            server, path, headers={"Origin": "http://127.0.0.1:4319"}
+        )
+        assert status == 403, path
+        assert "Access-Control-Allow-Origin" not in headers

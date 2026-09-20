@@ -82,6 +82,7 @@
           >
         </a>
         <div class="top-actions">
+          <a class="story-link" href="http://127.0.0.1:4319/">Back to the story</a>
           <span id="connection" class="connection"
             ><span class="dot"></span
             ><span id="connection-label">Connecting</span></span
@@ -120,20 +121,6 @@
             </div>
           </div>
 
-          <div id="welcome" class="welcome">
-            <div class="welcome-copy">
-              <h1>Choose a person to hear them clearly.</h1>
-              <p>People will appear here once you start listening.</p>
-            </div>
-            <div class="lens-art" aria-hidden="true">
-              <img
-                src="/assets/arc_hero.png"
-                alt=""
-                class="hero-hardware"
-              />
-            </div>
-          </div>
-
           <div id="camera-view" class="camera-view" hidden>
             <div id="video-surface" class="video-surface">
               <img
@@ -166,7 +153,7 @@
             </div>
             <div id="camera-wait" class="camera-wait" hidden>
               <svg><use href="#i-camera" /></svg
-              ><span>Waiting for camera…</span>
+              ><span id="camera-wait-text">Waiting for camera…</span>
             </div>
             <span id="scene-notice" class="scene-notice glass"
               >SIMULATED SCENE · NO CAMERA OR MICROPHONE</span

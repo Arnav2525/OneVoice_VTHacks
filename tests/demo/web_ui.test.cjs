@@ -84,7 +84,7 @@ function payload(phase = "listening", overrides = {}) {
   };
 }
 
-function harness() {
+function harness(extra = {}) {
   const elements = new Map();
   for (const match of html.matchAll(/<([a-z][\w-]*)\b([^>]*\bid="([^"]+)"[^>]*)>/g)) {
     const element = new Element(match[1]);
@@ -110,6 +110,7 @@ function harness() {
   const context = vm.createContext({
     document, window, console,
     performance: { now: () => now },
+    ...extra,
     localStorage: { getItem: () => null, setItem() {} },
     matchMedia: () => ({ matches: false, addEventListener() {} }),
     ResizeObserver: class { observe() {} },
@@ -397,4 +398,49 @@ test("caption strip displays connection errors and partial text updates", async 
     h.evaluate(`accept(${JSON.stringify(payload("isolating", { captions }))})`);
     assert.equal(h.get("live-caption-text").textContent, text);
   }
+});
+
+test("before Start the stage shows a camera-off placeholder, not the old welcome page", async () => {
+  const h = harness();
+  await h.boot(payload("ready", { frame: { available: false } }));
+  assert.equal(h.get("camera-view").hidden, false);
+  assert.equal(h.get("video-surface").hidden, true);
+  assert.equal(h.get("camera-wait").hidden, false);
+  assert.equal(h.get("camera-wait-text").textContent, "Camera is off. Press Start listening.");
+  assert.equal(h.get("focus-card").hidden, true);
+  assert.doesNotMatch(html, /id="welcome"|arc_hero/);
+});
+
+test("once listening starts the live video surface replaces the placeholder", async () => {
+  const h = harness();
+  await h.boot(payload("listening"));
+  assert.equal(h.get("video-surface").hidden, false);
+  assert.equal(h.get("camera-wait-text").textContent, "Waiting for camera…");
+  h.evaluate(`accept(${JSON.stringify(payload("stopped"))})`);
+  assert.equal(h.get("video-surface").hidden, true);
+  assert.equal(h.get("camera-wait-text").textContent, "Camera is off.");
+});
+
+test("arriving from the story page plays the reveal once and cleans the address", async () => {
+  const replaced = [];
+  const h = harness({
+    location: { search: "?from=story", pathname: "/" },
+    history: { replaceState: (...args) => replaced.push(args) },
+    URLSearchParams,
+  });
+  assert.equal(h.document.body.classList.contains("from-story"), true);
+  assert.deepEqual(replaced, [[null, "", "/"]]);
+  const timer = [...h.timers.values()].find((entry) => entry.delay === 1600);
+  assert.ok(timer);
+  timer.fn();
+  assert.equal(h.document.body.classList.contains("from-story"), false);
+});
+
+test("opening the app directly does not play the story reveal", async () => {
+  const h = harness({
+    location: { search: "", pathname: "/" },
+    history: { replaceState() { assert.fail("address must not change"); } },
+    URLSearchParams,
+  });
+  assert.equal(h.document.body.classList.contains("from-story"), false);
 });
