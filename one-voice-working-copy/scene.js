@@ -1,4 +1,3 @@
-import {makeWordParticles} from './word-particles.js';
 import * as THREE from 'three';
 import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -9,7 +8,6 @@ import { makeTerrain, elevation, hash } from './terrain.js';
 import { makeWind } from './weather.js';
 import { makeYeti } from './yeti.js';
 import { makeAtmosphere } from './atmosphere.js';
-import {makeForest,makeSuitcase} from './journey.js';
 
 export async function createWorld(canvas, onReady) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -104,18 +102,6 @@ export async function createWorld(canvas, onReady) {
   let width=0,height=0,progress=0,rotation=0,pitch=0,paused=reduced.matches,visible=true,clock=0,last=performance.now(),raf;
   let pointerX=0,pointerY=0,parallaxX=0,parallaxY=0;
   let sunset=false,warmth=0,details=false;
-  let suitcase=null;
-  let forest=null,biome=false,travelTime=-1,travelPending=false,switched=false;
-
-  const travelButton=document.querySelector('#travel-toggle'),travelVeil=document.querySelector('#travel-veil'),travelStatus=document.querySelector('#travel-status');
-  const wordParticles=makeWordParticles(travelVeil);
-  const forestFog=new THREE.Color('#52664d');
-  async function travel(){
-    if(travelTime>=0||travelPending)return;
-    travelPending=true;travelButton.disabled=true;travelButton.textContent='PREPARING JOURNEY…';
-    try{const loaded=await Promise.all([forest?Promise.resolve(forest):makeForest(),suitcase?Promise.resolve(suitcase):makeSuitcase()]);forest=loaded[0];suitcase=loaded[1];scene.add(forest.root,suitcase.root);rotation=0;pitch=0;switched=false;}
-    catch(error){travelPending=false;travelButton.disabled=false;travelButton.textContent='RETRY JOURNEY ↗';travelStatus.textContent='The journey could not load. Your current scene is still available.';console.error(error);}
-  }
   const dayFog=new THREE.Color('#b5c5d6'),eveningFog=new THREE.Color('#c6b7ac');
   const daySun=new THREE.Color('#fff2df'),eveningSun=new THREE.Color('#ffc388');
   const nightSky=new THREE.Color('#a9bfdf'),daySky=new THREE.Color('#dfeaff');
@@ -134,8 +120,6 @@ export async function createWorld(canvas, onReady) {
   function render(now){
     raf=requestAnimationFrame(render);const dt=Math.min((now-last)/1000,.05);last=now;if(!visible||document.hidden)return;
     if(!paused)clock+=dt;
-    if(travelPending&&forest&&suitcase&&progress<.025){travelPending=false;travelTime=0;document.querySelector('.world').classList.add('is-travelling');}
-    if(travelTime>=0)travelTime+=dt*(reduced.matches?3:1);
     const p=progress*6,idx=Math.min(3,Math.floor(p)),u=THREE.MathUtils.smoothstep(p-idx,0,1),a=states[idx],b=states[idx+1],mix=k=>THREE.MathUtils.lerp(a[k],b[k],u),mobile=width<650;
     const displayScale=mobile?.64-.10*THREE.MathUtils.smoothstep(p,0,.8):Math.min(1,width/1100);
     const x=mobile?0:mix('x');
@@ -143,23 +127,7 @@ export async function createWorld(canvas, onReady) {
     const exploration=1-THREE.MathUtils.smoothstep(p,3.5,4.1);
     product.position.set(x,y+Math.sin(clock*.65)*.055*exploration,0);
     product.scale.setScalar(mix('s')*displayScale);
-    if(biome&&p<1){product.position.y-=.12;}
     product.rotation.set(mix('rx')+pitch*exploration,mix('ry')+rotation*exploration,Math.sin(clock*.3)*.012*exploration);
-    if(travelTime>=0){
-      const t=travelTime,pack=THREE.MathUtils.smoothstep(t,.4,1.7)*(1-THREE.MathUtils.smoothstep(t,6.4,7.6));
-      suitcase.root.visible=true;suitcase.root.position.set(x,-1.6,0);suitcase.root.rotation.y=-.2;suitcase.root.scale.setScalar(displayScale);
-      suitcase.hinge.rotation.x=-1.8*(1-THREE.MathUtils.smoothstep(t,1.6,2.6)+THREE.MathUtils.smoothstep(t,6.1,6.8));
-      product.position.y-=pack*.9;product.scale.multiplyScalar(1-pack*.52);
-      product.scale.multiplyScalar(1-.15*Math.sin(Math.min(t/6,1)*Math.PI));
-      product.rotation.y+=Math.sin(Math.min(t/6,1)*Math.PI)*.35;
-      product.visible=t<2.7||t>6.3;
-      const cover=THREE.MathUtils.smoothstep(t,2.25,2.85)*(1-THREE.MathUtils.smoothstep(t,6.05,6.85));travelVeil.style.opacity=cover;wordParticles.draw(t,reduced.matches);
-      travelStatus.textContent=t<2?'ONE VOICE. EVERYWHERE.':t<6.3?((switched?!biome:biome)?'RETURNING TO THE SUMMIT':'BOUND FOR THE FOREST'):'A NEW PLACE. THE SAME CONNECTION.';
-      if(t>=4.7&&!switched){biome=!biome;switched=true;document.querySelector('.world').classList.toggle('is-forest',biome);document.querySelector('#biome-name').textContent=biome?'FOREST / 02':'ALPINE / 01';canvas.setAttribute('aria-label',`Interactive 3D One Voice glasses in a ${biome?'forest clearing':'snowy mountain landscape'}. Drag to rotate.`);}
-      if(t>8.2){travelTime=-1;suitcase.root.visible=false;product.visible=true;travelVeil.style.opacity=0;travelButton.disabled=false;travelButton.textContent=biome?'TRAVEL TO SNOW ↗':'TRAVEL AROUND ↗';document.querySelector('.world').classList.remove('is-travelling');travelStatus.textContent=biome?'Arrived in the forest. Drag to explore, or scroll to continue.':'Back at the summit.';}
-    }
-    alpineTerrain.visible=!biome;haze.visible=!biome;windRoot.visible=!biome;snowPoints.visible=!biome;
-    if(forest){forest.root.visible=biome;forest.update(clock,p);}
     parallaxX+=(pointerX-parallaxX)*(1-Math.exp(-dt*3));parallaxY+=(pointerY-parallaxY)*(1-Math.exp(-dt*3));
     camera.position.set(Math.sin(Math.min(p,4)/4*Math.PI)*.85+(paused?0:parallaxX*.48*exploration),mix('cy')+(paused?0:parallaxY*.18*exploration),mix('cz'));
     lensCenter.set(-.36,.82,2.622);product.localToWorld(lensCenter);
@@ -177,16 +145,16 @@ export async function createWorld(canvas, onReady) {
     portalRing.style.left=`${cx}px`;portalRing.style.top=`${cy}px`;portalRing.style.width=portalRing.style.height=`${radius*2}px`;portalRing.style.opacity=portalProgress>0&&portalProgress<.85?Math.sin(portalProgress*Math.PI)*.7:0;
     flare.style.opacity=reduced.matches?0:Math.sin(portalProgress*Math.PI)*.14;
     warmth+=(Number(sunset)-warmth)*(1-Math.exp(-dt*1.8));
-    scene.fog.color.copy(dayFog).lerp(eveningFog,warmth);if(biome)scene.fog.color.copy(forestFog);scene.fog.density=biome?.032:.0105;
+    scene.fog.color.copy(dayFog).lerp(eveningFog,warmth);scene.fog.density=.0105;
     sun.color.copy(daySun).lerp(eveningSun,warmth);sun.position.y=19-warmth*8;sun.intensity=2.8-warmth*.4;
     skyLight.color.copy(daySky).lerp(nightSky,warmth);
-    if(biome){sun.color.set("#ffe2a1");sun.intensity=3.2;skyLight.color.set("#a8c797");}
-    atmosphere.update(clock,biome?.8:warmth);
+    atmosphere.update(clock,warmth);
     wind.update(clock,.7+Math.sin(portalProgress*Math.PI)*1.15);
-    yeti.update(clock,parallaxX);yeti.root.visible=!biome&&!mobile&&p<3.6&&travelTime<0;
+    yeti.update(clock,parallaxX);
+    yeti.root.visible=!mobile&&p<3.6;
     pin.copy(yeti.root.position);pin.y-=.2;pin.project(camera);hello.hidden=!yeti.root.visible||p>.6;
     hello.style.left=`${(pin.x*.5+.5)*width}px`;hello.style.top=`${(-pin.y*.5+.5)*height}px`;
-    detailButtons.forEach((button,i)=>{button.hidden=travelTime>=0||!details||p>3.6||(i===2&&p<2.35);pin.copy(detailPositions[i]);product.localToWorld(pin);pin.project(camera);button.style.left=`${(pin.x*.5+.5)*width}px`;button.style.top=`${(-pin.y*.5+.5)*height}px`;});
+    detailButtons.forEach((button,i)=>{button.hidden=!details||p>3.6||(i===2&&p<2.35);pin.copy(detailPositions[i]);product.localToWorld(pin);pin.project(camera);button.style.left=`${(pin.x*.5+.5)*width}px`;button.style.top=`${(-pin.y*.5+.5)*height}px`;});
     earbuds.visible=p>2.35; snowMat.uniforms.time.value=clock;
     projected.set(p<1.6?-.36:1.65,p<1.6?.82:0,p<1.6?2.63:-1.3);product.localToWorld(projected);projected.project(camera);
     const reverse=p>1.6;annotation.classList.toggle('reverse',reverse);
@@ -208,7 +176,7 @@ export async function createWorld(canvas, onReady) {
   } finally {clearTimeout(compileTimer);}
   composer.render();
   raf=requestAnimationFrame(render);onReady();
-  return {travel,setProgress(p){if(travelTime<0)progress=p;},rotate(delta){rotation+=delta;},reset(){rotation=0;pitch=0;},setDetails(value){details=value;},setSunset(value){sunset=value;},greet(){yeti.greet(clock-(paused?.5:0));},setPaused(value){paused=value;},get paused(){return paused;},dispose(){cancelAnimationFrame(raf);renderer.dispose();composer.dispose();}};
+  return {setProgress(p){progress=p;},rotate(delta){rotation+=delta;},reset(){rotation=0;pitch=0;},setDetails(value){details=value;},setSunset(value){sunset=value;},greet(){yeti.greet(clock-(paused?.5:0));},setPaused(value){paused=value;},get paused(){return paused;},dispose(){cancelAnimationFrame(raf);renderer.dispose();composer.dispose();}};
 }
 
 

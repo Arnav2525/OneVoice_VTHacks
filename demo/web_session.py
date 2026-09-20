@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 UI_ROOT = Path(__file__).resolve().parent / "web_ui"
 MAX_BODY_BYTES = 2048
 BODY_LIMITS = {"/api/speak": 4096}
-STORY_ORIGINS = frozenset({"http://127.0.0.1:4319", "http://localhost:4319"})
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
@@ -25,6 +24,8 @@ STATIC_FILES = {
     "/summary.js": ("summary.js", "text/javascript; charset=utf-8"),
     "/assets/arc_hero.png": ("assets/arc_hero.png", "image/png"),
 }
+STORY_ORIGIN = "http://127.0.0.1:4319"
+STORY_ORIGINS = frozenset({STORY_ORIGIN, "http://localhost:4319"})
 
 
 def _frame_info(runner: Any, session: Any) -> tuple[Any, dict[str, Any]]:
@@ -80,7 +81,8 @@ def session_payload(runner: Any) -> dict[str, Any]:
         "captions": captions.snapshot() if captions is not None else _NO_CAPTIONS,
         "recording_summary": (
             runner.recording_summaries.snapshot()
-            if hasattr(runner, "recording_summaries") else None
+            if hasattr(runner, "recording_summaries")
+            else None
         ),
         "frame": frame_info,
         "server_time_ms": time.monotonic() * 1000.0,
@@ -210,22 +212,26 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
             self._json(403, {"error": "This UI accepts only local requests."})
             return
         origin = self.headers.get("Origin")
-        headers = {}
-        if origin in STORY_ORIGINS:
-            headers = {
+        if origin not in STORY_ORIGINS:
+            self._json(403, {"error": "Local story origin required."})
+            return
+        self._reply(
+            200,
+            b'{"app": "onevoice"}',
+            headers={
                 "Access-Control-Allow-Origin": origin,
                 "Cross-Origin-Resource-Policy": "cross-origin",
                 "Vary": "Origin",
-            }
-        self._reply(200, b'{"app": "onevoice"}', headers=headers)
+            },
+        )
 
     def do_GET(self) -> None:  # noqa: N802
-        if urlsplit(self.path).path == "/api/ping":
+        path = urlsplit(self.path).path
+        if path == "/api/ping":
             self._ping()
             return
         if not self._local_request():
             return
-        path = urlsplit(self.path).path
         try:
             if path == "/api/state":
                 self._json(200, session_payload(self.server.runner))

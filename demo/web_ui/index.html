@@ -75,14 +75,14 @@
           <span class="brand-mark"
             ><svg><use href="#i-wave" /></svg
           ></span>
-          <span
-            >OneVoice<span class="brand-caption"
+          <span class="brand-wordmark"
+            >ONE<span>VOICE</span><span class="brand-caption"
               >YOUR LISTENING SPACE</span
             ></span
           >
         </a>
         <div class="top-actions">
-          <a class="story-link" href="http://127.0.0.1:4319/">Back to the story</a>
+          <a class="story-back" href="http://127.0.0.1:4319/">← Back to story</a>
           <span id="connection" class="connection"
             ><span class="dot"></span
             ><span id="connection-label">Connecting</span></span
@@ -121,7 +121,7 @@
             </div>
           </div>
 
-          <div id="camera-view" class="camera-view" hidden>
+          <div id="camera-view" class="camera-view">
             <div id="video-surface" class="video-surface">
               <img
                 id="camera-frame"
@@ -153,7 +153,7 @@
             </div>
             <div id="camera-wait" class="camera-wait" hidden>
               <svg><use href="#i-camera" /></svg
-              ><span id="camera-wait-text">Waiting for camera…</span>
+              ><span id="camera-wait-text">Camera is off. Press Start listening.</span>
             </div>
             <span id="scene-notice" class="scene-notice glass"
               >SIMULATED SCENE · NO CAMERA OR MICROPHONE</span
@@ -247,7 +247,7 @@
               class="icon-button captions-button"
               aria-label="Enable live captions"
               aria-pressed="false"
-              title="Live captions for the selected person"
+              title="Sends the selected person’s isolated audio to ElevenLabs while captions are on"
               disabled
             >
               <svg><use href="#i-captions" /></svg>
@@ -259,6 +259,7 @@
           </div>
         </div>
 
+        <p class="caption-privacy">Live captions are off by default. When enabled, the selected person’s isolated audio goes to ElevenLabs.</p>
         <section id="summary-panel" class="summary-panel glass" aria-labelledby="summary-heading" hidden>
           <div><span class="caption-kicker">AFTER THE CONVERSATION</span>
             <h2 id="summary-heading" tabindex="-1">Conversation summary</h2>
