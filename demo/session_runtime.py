@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from demo.devices import resolve_audio_device
+from demo.elevenlabs_transcription import ElevenLabsCaptions as SessionCaptions
 from demo.safety import build_safety_monitor
-from demo.session_captions import SessionCaptions, build_transcriber_factory
 from demo.session_recording import SessionRecorder
 from demo.session_state import SessionState
 from demo.tap_selection import TrackObservingSelector
@@ -269,7 +269,7 @@ class SessionRunner:
         self.state = SessionState("preview" if self.preview else "live")
         self.recorder = SessionRecorder()
         self.captions = SessionCaptions(
-            self.state, build_transcriber_factory(self.config)
+            self.state, self.config.get("captions", {})
         )
         self.record_root = record_root
         self._record_control_lock = threading.Lock()

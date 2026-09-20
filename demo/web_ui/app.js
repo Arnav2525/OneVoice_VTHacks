@@ -299,16 +299,6 @@ function positionTargets() {
       height: `${height}px`,
     });
 
-    if (track.track_id === snapshot.session.selected_id) {
-      const bubble = ui["live-caption"];
-      const half = (bubble.offsetWidth || 0) / 2;
-      const tall = bubble.offsetHeight || 0;
-      const centre = x + width / 2;
-      Object.assign(bubble.style, {
-        left: `${Math.min(Math.max(centre, half), Math.max(half, surface.width - half))}px`,
-        top: `${tall ? Math.max(y, tall + 14) : y}px`,
-      });
-    }
   }
 }
 
@@ -484,17 +474,24 @@ function render() {
   if (captionKey !== lastCaptionKey) {
     lastCaptionKey = captionKey;
     lastCaptionAt = performance.now();
-    if (currentCaption)
-      ui["live-caption-text"].textContent = currentCaption.text;
   }
+  if (currentCaption)
+    ui["live-caption-text"].textContent = currentCaption.text.length > 180
+      ? "…" + currentCaption.text.slice(-177).replace(/^\S*\s/, "")
+      : currentCaption.text;
   const captionFresh =
     Boolean(currentCaption) &&
     performance.now() - lastCaptionAt < CAPTION_FADE_MS;
-  const showCaption =
-    captionFresh &&
-    !synthetic &&
-    phase === "isolating" &&
-    currentCaption.track_id === session.selected_id;
+  const showCaption = captions.enabled && !synthetic && session.active;
+  if (captions.error || !(captionFresh && phase === "isolating" &&
+      currentCaption.track_id === session.selected_id)) {
+    ui["live-caption-text"].textContent = captions.error ||
+      (captions.status === "loading" ? "Connecting to ElevenLabs…" :
+        captions.status === "reconnecting" ? "Reconnecting captions…" :
+          phase === "target_lost" ? "Captions paused — select the person again." :
+            !session.selected_id ? "Select a person to see live captions." :
+              "Listening…");
+  }
   ui["live-caption"].hidden = !showCaption;
   ui["live-caption"].classList.toggle("visible", showCaption);
   if (showCaption) positionTargets();

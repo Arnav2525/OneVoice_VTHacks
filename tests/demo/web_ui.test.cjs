@@ -324,49 +324,49 @@ const bubbleCaptions = (overrides = {}) => ({
   ...overrides,
 });
 
-test("live caption bubble shows the selected person's words above their box", async () => {
+test("live caption strip shows the selected person's words without face positioning", async () => {
   const h = harness();
   await bootWithFrame(h, payload("isolating", { captions: bubbleCaptions() }));
   const bubble = h.get("live-caption");
   assert.equal(bubble.hidden, false);
   assert.equal(bubble.classList.contains("visible"), true);
   assert.equal(h.get("live-caption-text").textContent, "Hello there");
-  assert.equal(bubble.style.left, "70px");
-  assert.equal(bubble.style.top, "30px");
+  assert.equal(bubble.style.left, undefined);
+  assert.equal(bubble.style.top, undefined);
 });
 
-test("live caption bubble stays hidden for other people, other phases and preview scenes", async () => {
+test("caption strip excludes other speakers and preview scenes", async () => {
   const other = harness();
   await other.boot(
     payload("isolating", {
       captions: bubbleCaptions({ current: { track_id: "person-2", text: "Not selected", timestamp_ms: 5 } }),
     }),
   );
-  assert.equal(other.get("live-caption").hidden, true);
+  assert.equal(other.get("live-caption-text").textContent, "Listening…");
 
   const listening = harness();
   await listening.boot(payload("listening", { captions: bubbleCaptions() }));
-  assert.equal(listening.get("live-caption").hidden, true);
+  assert.notEqual(listening.get("live-caption-text").textContent, "Hello there");
 
   const synthetic = harness();
   await synthetic.boot(payload("isolating", { synthetic: true, captions: bubbleCaptions() }));
   assert.equal(synthetic.get("live-caption").hidden, true);
 });
 
-test("live caption bubble fades after a quiet spell and returns with the next line", async () => {
+test("caption strip returns to Listening after silence and shows the next line", async () => {
   const h = harness();
   await h.boot(payload("isolating", { captions: bubbleCaptions() }));
   assert.equal(h.get("live-caption").hidden, false);
   h.advance(9000);
   h.evaluate(`accept(${JSON.stringify(payload("isolating", { captions: bubbleCaptions() }))})`);
-  assert.equal(h.get("live-caption").hidden, true);
+  assert.equal(h.get("live-caption-text").textContent, "Listening…");
   const next = bubbleCaptions({ current: { track_id: "person-1", text: "Second line", timestamp_ms: 9 } });
   h.evaluate(`accept(${JSON.stringify(payload("isolating", { captions: next }))})`);
   assert.equal(h.get("live-caption").hidden, false);
   assert.equal(h.get("live-caption-text").textContent, "Second line");
 });
 
-test("live caption bubble stays inside the video when the person is at the top or an edge", async () => {
+test("caption strip does not follow face movement", async () => {
   const h = harness();
   h.get("live-caption").offsetWidth = 200;
   h.get("live-caption").offsetHeight = 40;
@@ -374,12 +374,27 @@ test("live caption bubble stays inside the video when the person is at the top o
   nearTop.tracks[0].bounding_box = [0, 10, 60, 150];
   await bootWithFrame(h, nearTop);
   const bubble = h.get("live-caption");
-  assert.equal(bubble.style.top, "54px");
-  assert.equal(bubble.style.left, "100px");
+  assert.equal(bubble.style.top, undefined);
+  assert.equal(bubble.style.left, undefined);
 
   const nearRight = payload("isolating", { captions: bubbleCaptions() });
   nearRight.tracks[0].bounding_box = [600, 200, 40, 100];
   h.evaluate(`accept(${JSON.stringify(nearRight)})`);
-  assert.equal(bubble.style.left, "540px");
-  assert.equal(bubble.style.top, "200px");
+  assert.equal(bubble.style.left, undefined);
+  assert.equal(bubble.style.top, undefined);
+});
+
+test("caption strip displays connection errors and partial text updates", async () => {
+  const h = harness();
+  await h.boot(payload("isolating", { captions: bubbleCaptions({
+    current: null, status: "error", error: "Check your API key",
+  }) }));
+  assert.equal(h.get("live-caption-text").textContent, "Check your API key");
+  for (const [text, timestamp_ms] of [["Hello", 10], ["Hello world", 11]]) {
+    const captions = bubbleCaptions({ current: {
+      track_id: "person-1", text, timestamp_ms,
+    } });
+    h.evaluate(`accept(${JSON.stringify(payload("isolating", { captions }))})`);
+    assert.equal(h.get("live-caption-text").textContent, text);
+  }
 });

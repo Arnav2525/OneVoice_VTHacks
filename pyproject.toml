@@ -65,6 +65,7 @@ clearvoice = [
 demo = [
     "numpy>=1.24",
     "opencv-python>=4.8",
+    "websocket-client>=1.8,<2",
 ]
 transcription = [
     "numpy>=1.24",

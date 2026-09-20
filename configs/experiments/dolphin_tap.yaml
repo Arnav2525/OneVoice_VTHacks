@@ -41,9 +41,7 @@ audio:
 
 captions:
 
-  device: cpu
-  model_size: small
-  compute_type: int8
+  model: scribe_v2_realtime
 
 video:
   device_index: 0
