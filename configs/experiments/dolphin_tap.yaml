@@ -33,6 +33,11 @@ audio:
   denoise:
     enabled: true
     model_path: checkpoints/gtcrn/gtcrn_simple.onnx
+  lip_gate:
+    enabled: true
+    model_path: checkpoints/pause/face_landmarker.task
+    hold_ms: 500.0
+    attenuation_db: 35.0
 
 video:
   device_index: 700

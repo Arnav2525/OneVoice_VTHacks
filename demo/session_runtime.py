@@ -142,12 +142,14 @@ class SessionSink:
         denoiser: Any = None,
         *,
         safety: Any = None,
+        lip_gate: Any = None,
     ) -> None:
         self.sink, self.state = sink, state
         self.separator, self.recorder, self.captions = separator, recorder, captions
         self.cleanup = cleanup
         self.denoiser = denoiser
         self.safety = safety
+        self.lip_gate = lip_gate
         self._was_allowed = False
         self._fade_samples = 128
 
@@ -157,6 +159,8 @@ class SessionSink:
             self.cleanup.reset()
         if self.denoiser is not None:
             self.denoiser.reset()
+        if self.lip_gate is not None:
+            self.lip_gate.reset()
         self.sink.start()
 
     def stop(self) -> None:
@@ -182,7 +186,7 @@ class SessionSink:
         )
         self._was_allowed = True
 
-        for processor in (self.cleanup, self.denoiser):
+        for processor in (self.cleanup, self.denoiser, self.lip_gate):
             if processor is not None:
                 processor.reset()
         self.sink.write(delivered)
@@ -203,7 +207,7 @@ class SessionSink:
             and status.get("is_real_separation") is True
             and not status.get("fallback_active")
         )
-        for processor in (self.cleanup, self.denoiser):
+        for processor in (self.cleanup, self.denoiser, self.lip_gate):
             if processor is None:
                 continue
             if allowed:
@@ -283,6 +287,7 @@ class SessionRunner:
         self._pipeline: Any = None
         self._separator: Any = None
         self._identity_tracker: Any = None
+        self._lip_selector: Any = None
         self._recording_cleanup_pending = False
         self._safety: Any = None
         self._alarm_name = "alarm"
@@ -329,6 +334,7 @@ class SessionRunner:
             self._pipeline is not None
             or self._separator is not None
             or self._identity_tracker is not None
+            or self._lip_selector is not None
             or self._recording_cleanup_pending
         )
 
@@ -574,6 +580,23 @@ class SessionRunner:
         if self._safety is not None:
 
             source = RecordingAudioSource(raw, self._safety)
+        lip_gate = None
+        lip_config = audio.get("lip_gate", {})
+        if lip_config.get("enabled", False) and not self.preview:
+            from demo.lip_gate import LipGate, LipSelector
+
+            self.state.starting_detail("Preparing selected-person lip tracking...")
+            lip_gate = LipGate(
+                hold_ms=float(lip_config.get("hold_ms", 500.0)),
+                attenuation_db=float(lip_config.get("attenuation_db", 35.0)),
+            )
+            model_path = Path(__file__).resolve().parents[1] / lip_config.get(
+                "model_path", "checkpoints/pause/face_landmarker.task"
+            )
+            self._lip_selector = LipSelector(
+                SessionSelector(self.state), self.state, lip_gate, model_path
+            )
+            self.selector = TrackObservingSelector(self._lip_selector)
         separator = EpochSeparator(build_separator(config), self.state)
         pipeline = StreamingPipeline(
             audio_source=ObservedSource(source, self._on_input),
@@ -586,6 +609,7 @@ class SessionRunner:
                 cleanup,
                 denoiser,
                 safety=self._safety,
+                lip_gate=lip_gate,
             ),
             video_source=ObservedSource(video, self._on_frame),
             face_tracker=tracker,
@@ -609,6 +633,13 @@ class SessionRunner:
             else:
                 self._pipeline = None
 
+        if self._pipeline is None and self._lip_selector is not None:
+            try:
+                self._lip_selector.close()
+            except Exception as exc:
+                errors.append(str(exc) or type(exc).__name__)
+            else:
+                self._lip_selector = None
         if self._pipeline is None and self._identity_tracker is not None:
             try:
                 self._identity_tracker.close()

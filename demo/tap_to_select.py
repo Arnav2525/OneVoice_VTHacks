@@ -18,6 +18,7 @@ from demo.session_runtime import SessionRunner
 from demo.session_view import face_at, inside, render_session
 from onevoice.streaming.app import load_experiment_config
 
+
 class SessionWindow:
 
     def __init__(self, runner: SessionRunner, *, windowed: bool = False) -> None:
@@ -143,6 +144,7 @@ def run(
     camera_size: tuple[int, int] | None = None,
     input_device: int | str | None = None,
     output_device: int | str | None = None,
+    no_lip_gate: bool = False,
 ) -> int:
     config = load_experiment_config(config_path)
 
@@ -157,6 +159,8 @@ def run(
         config.setdefault("audio", {})["input_device"] = input_device
     if output_device is not None:
         config.setdefault("audio", {})["output_device"] = output_device
+    if no_lip_gate:
+        config.setdefault("audio", {}).setdefault("lip_gate", {})["enabled"] = False
     runner = SessionRunner(
         config,
         live=live,
@@ -289,6 +293,10 @@ def _build_argparser() -> argparse.ArgumentParser:
         action="store_true",
         help="list microphones and playback devices without opening capture or the UI",
     )
+    parser.add_argument(
+        "--no-lip-gate", action="store_true",
+        help="disable pause suppression for comparison",
+    )
     return parser
 
 def main(argv: list[str] | None = None) -> int:
@@ -316,6 +324,7 @@ def main(argv: list[str] | None = None) -> int:
         camera_size=args.camera_size,
         input_device=args.input_device,
         output_device=args.output_device,
+        no_lip_gate=args.no_lip_gate,
     )
 
 if __name__ == "__main__":

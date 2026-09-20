@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, BinaryIO
 
+
 @dataclass(frozen=True)
 class RecordingSnapshot:
     active: bool
@@ -178,6 +179,8 @@ class SessionRecorder:
                 "noise_suppression",
                 "denoise_delay_samples",
                 "denoise_delay_ms",
+                "lip_gate_gain_min",
+                "lip_gate_known_fraction",
                 "source_timestamp_ms",
                 "buffered_delay_ms",
                 "visual_coverage",
