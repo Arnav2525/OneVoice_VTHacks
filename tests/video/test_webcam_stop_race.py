@@ -7,8 +7,12 @@ import pytest
 
 from onevoice.video import capture
 
+_SIZES = {3: 640.0, 4: 480.0}
+
 
 def _fake_cv2(webcam):
+    if not hasattr(webcam, "get"):
+        webcam.get = lambda prop: _SIZES.get(prop, 0.0)
     return SimpleNamespace(
         VideoCapture=lambda _index: webcam,
         CAP_PROP_FRAME_WIDTH=3,
