@@ -250,22 +250,6 @@ svg {
 #mode-context {
   color: #9cacbf;
 }
-.welcome {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  padding: 96px 7.4% 50px;
-  gap: 3%;
-  transition:
-    opacity 0.24s var(--ease),
-    transform 0.3s var(--ease);
-}
-.welcome-copy {
-  position: relative;
-  z-index: 2;
-  flex: 1;
-}
 .eyebrow {
   font-size: 10px;
   letter-spacing: 2px;
@@ -279,37 +263,6 @@ svg {
   width: 23px;
   height: 1px;
   background: var(--cyan);
-}
-.welcome-copy h1 {
-  margin: 28px 0 24px;
-  font-weight: 480;
-  font-size: clamp(42px, 4.4vw, 74px);
-  line-height: 1.05;
-  letter-spacing: -3px;
-  color: var(--ink);
-}
-.welcome-copy p {
-  font-size: 14px;
-  line-height: 1.85;
-  color: var(--muted);
-  margin: 0;
-  max-width: 34ch;
-}
-.lens-art {
-  position: relative;
-  flex: 1;
-  align-self: stretch;
-  min-width: 260px;
-  max-width: 530px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.hero-hardware {
-  width: 100%;
-  max-width: 460px;
-  height: auto;
-  filter: drop-shadow(0 30px 60px #00000060);
 }
 .camera-view {
   position: absolute;
@@ -1126,12 +1079,6 @@ body.high-contrast .record-status {
   .record-status {
     font-size: 10px;
   }
-  .welcome {
-    padding: 90px 6% 50px;
-  }
-  .hero-hardware {
-    max-width: 340px;
-  }
   .focus-card {
     width: 250px;
     right: 20px;
@@ -1192,25 +1139,6 @@ body.high-contrast .record-status {
   #mode-context,
   .chip-divider {
     display: none;
-  }
-  .welcome {
-    padding: 35px;
-    align-items: flex-start;
-  }
-  .welcome-copy {
-    padding-top: 90px;
-  }
-  .welcome-copy p {
-    font-size: 12px;
-  }
-  .lens-art {
-    position: absolute;
-    right: -90px;
-    bottom: 40px;
-    width: 275px;
-    height: 275px;
-    opacity: 0.6;
-    z-index: -1;
   }
   .focus-card {
     bottom: 66px;
@@ -1408,3 +1336,47 @@ body[data-synthetic="false"] .target-label {
 .summary-badge[data-status="scripted"] { border-color: #f0c771; color: #f0c771; }
 .summary-auto { display: inline-flex; gap: 8px; align-items: center; font-size: .9rem; color: #b5c9d3; cursor: pointer; }
 .summary-panel button:disabled { opacity: .45; cursor: not-allowed; }
+
+.story-link {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 7px 12px;
+  border: 1px solid #b8ac9c33;
+  border-radius: 999px;
+  transition:
+    color 0.18s var(--ease),
+    border-color 0.18s var(--ease);
+}
+.story-link:hover,
+.story-link:focus-visible {
+  color: var(--ink);
+  border-color: #b8ac9c88;
+}
+.camera-wait {
+  flex-direction: column;
+}
+body.from-story .app-shell {
+  animation: story-arrive 0.9s var(--ease) both;
+}
+@keyframes story-arrive {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.from-story .app-shell {
+    animation: none;
+  }
+}
+body.reduce-motion.from-story .app-shell {
+  animation: none;
+}

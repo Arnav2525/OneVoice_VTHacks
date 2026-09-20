@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import base64
@@ -18,6 +16,7 @@ logger = logging.getLogger(__name__)
 UI_ROOT = Path(__file__).resolve().parent / "web_ui"
 MAX_BODY_BYTES = 2048
 BODY_LIMITS = {"/api/speak": 4096}
+STORY_ORIGINS = frozenset({"http://127.0.0.1:4319", "http://localhost:4319"})
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
@@ -26,6 +25,7 @@ STATIC_FILES = {
     "/summary.js": ("summary.js", "text/javascript; charset=utf-8"),
     "/assets/arc_hero.png": ("assets/arc_hero.png", "image/png"),
 }
+
 
 def _frame_info(runner: Any, session: Any) -> tuple[Any, dict[str, Any]]:
     frame = runner.frame()
@@ -49,7 +49,9 @@ def _frame_info(runner: Any, session: Any) -> tuple[Any, dict[str, Any]]:
         "timestamp_ms": None if frame is None else frame.timestamp_ms,
     }
 
+
 _NO_CAPTIONS = {"enabled": False, "status": "off", "error": None, "current": None}
+
 
 def session_payload(runner: Any) -> dict[str, Any]:
 
@@ -80,8 +82,8 @@ def session_payload(runner: Any) -> dict[str, Any]:
         "server_time_ms": time.monotonic() * 1000.0,
     }
 
-class SessionHTTPServer(ThreadingHTTPServer):
 
+class SessionHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     block_on_close = False
 
@@ -142,6 +144,7 @@ class SessionHTTPServer(ThreadingHTTPServer):
         finally:
             self.shutdown()
 
+
 class SessionRequestHandler(BaseHTTPRequestHandler):
     server: SessionHTTPServer
 
@@ -163,7 +166,8 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
             self.send_header(name, value)
         self.send_header("Cache-Control", "no-store, max-age=0")
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+        if "Cross-Origin-Resource-Policy" not in (headers or {}):
+            self.send_header("Cross-Origin-Resource-Policy", "same-origin")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("Permissions-Policy", "camera=(), microphone=()")
@@ -197,7 +201,24 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _ping(self) -> None:
+        if self.headers.get_all("Host", []) != [self.server.authority]:
+            self._json(403, {"error": "This UI accepts only local requests."})
+            return
+        origin = self.headers.get("Origin")
+        headers = {}
+        if origin in STORY_ORIGINS:
+            headers = {
+                "Access-Control-Allow-Origin": origin,
+                "Cross-Origin-Resource-Policy": "cross-origin",
+                "Vary": "Origin",
+            }
+        self._reply(200, b'{"app": "onevoice"}', headers=headers)
+
     def do_GET(self) -> None:  # noqa: N802
+        if urlsplit(self.path).path == "/api/ping":
+            self._ping()
+            return
         if not self._local_request():
             return
         path = urlsplit(self.path).path
