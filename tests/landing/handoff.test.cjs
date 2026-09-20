@@ -65,7 +65,8 @@ test("About packs the glasses into the case, then opens About with the yeti arri
   const about = read(site, "about.html");
   const yeti = read(site, "about-yeti.js");
   assert.match(html, /id="travel-toggle"[^>]*>ABOUT \/ PACK UP/);
-  assert.match(html, /class="home-link" data-about>About</);
+  assert.match(html, /<nav aria-label="Main navigation"><a href="#top" class="home-link">Home<\/a>/);
+  assert.doesNotMatch(html, /data-about/);
   assert.match(main, /function openAbout\(\)/);
   assert.match(main, /world\.travel\(\)/);
   assert.match(main, /about\.html\?arrival=yeti/);
@@ -102,4 +103,17 @@ test("the yeti stays put while the glasses pack: no fly-in and no growing before
   assert.doesNotMatch(scene, /YETI IS SHOWING YOU/);
   assert.match(scene, /yeti\.root\.scale\.setScalar\(1\.25\)/);
   assert.match(scene, /suitcase\.hinge\.rotation\.x/);
+});
+
+test("the loading and retry screen is gone and nothing in the scripts still depends on it", () => {
+  const scene = read(site, "scene.js");
+  const startup = read(site, "startup.js");
+  const css = read(site, "style.css");
+  assert.doesNotMatch(html, /id="loading"|loading-text/);
+  assert.doesNotMatch(main, /#loading/);
+  assert.doesNotMatch(scene, /#loading/);
+  assert.doesNotMatch(css, /\.loading/);
+  assert.doesNotMatch(startup, /RETRY LOADING|TAKING LONGER|loading/);
+  assert.match(startup, /import\('\.\/main\.js/);
+  assert.match(main, /world-error/);
 });

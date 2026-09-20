@@ -179,9 +179,9 @@ test("face matching explains the three-person limit and clears its hint on Stop"
   assert.match(h.get("caption-detail").textContent, /Unrecognized faces stay unlabelled/);
   assert.match(h.get("people-count").lastElementChild.textContent, /recognized/);
   h.evaluate(`accept(${JSON.stringify(payload("listening", { identity: { ...identity, unmatched: 0 } }))})`);
-  assert.match(h.get("caption-detail").textContent, /Stop clears face profiles/);
+  assert.equal(h.get("caption-detail").textContent, "");
   h.evaluate(`accept(${JSON.stringify(payload("stopped", { identity: {} }))})`);
-  assert.equal(h.get("caption-detail").textContent, "Your devices stay off until you start.");
+  assert.equal(h.get("caption-detail").textContent, "");
 });
 
 test("Back/forward restoration resumes polling once and rejects the pre-navigation response", async () => {
@@ -257,7 +257,7 @@ test("Record and Clear shortcuts work with a button focused, but typing does not
   h.respond(request, payload());
   await flush();
   const count = h.requests.length;
-  await key("r", h.get("reduce-motion"));
+  await key("r", h.document.createElement("input"));
   await key(" ", h.get("session-button"));
   assert.equal(h.requests.length, count, "Typing and native button Space must not dispatch a shortcut");
 });
@@ -453,4 +453,47 @@ test("opening the app directly does not play the story reveal", async () => {
     URLSearchParams,
   });
   assert.equal(h.document.body.classList.contains("from-story"), false);
+});
+
+test("idle and routine states stay quiet: no filler copy, no empty recording status", async () => {
+  const h = harness();
+  await h.boot(payload("ready", { frame: { available: false } }));
+  assert.equal(h.get("caption-kicker").textContent, "");
+  assert.equal(h.get("caption-detail").textContent, "");
+  assert.equal(h.get("record-status").hidden, true);
+  assert.equal(h.get("status-detail").hidden, true);
+  for (const filler of ["DESIGNED TO KEEP YOU", "Display preferences", "Live captions are off by default"]) {
+    assert.ok(!html.includes(filler), filler);
+  }
+  h.evaluate(`accept(${JSON.stringify(payload("listening", { synthetic: true, recording: { active: true, elapsed_s: 3, path: "clip", error: null } }))})`);
+  assert.equal(h.get("record-status").hidden, false);
+  assert.match(h.get("record-status-text").textContent, /REC/);
+});
+
+test("problems still explain themselves: detail text shows only for error-like phases", async () => {
+  const h = harness();
+  await h.boot(payload("error", { session: { ...payload().session, phase: "error", active: false, title: "Session could not continue", detail: "The microphone could not be opened." } }));
+  assert.equal(h.get("status-detail").hidden, false);
+  assert.equal(h.get("status-detail").textContent, "The microphone could not be opened.");
+});
+
+test("the settings panel is gone and display preferences follow the operating system", async () => {
+  assert.doesNotMatch(html, /id="settings"|id="reduce-motion"|id="high-contrast"|settings-toggle/);
+  const h = harness();
+  await h.boot(payload("ready", { frame: { available: false } }));
+  assert.equal(h.document.body.dataset.preferencesReady, "true");
+});
+
+test("the camera stage takes the camera's own aspect ratio so the image fills the panel", async () => {
+  const css = fs.readFileSync(path.join(uiRoot, "app.css"), "utf8");
+  assert.match(css, /--cam-h: clamp\(360px, calc\(\(100cqw - 320px\) \/ var\(--cam-ar, 1\.7778\)\), 74vh\)/);
+  assert.match(css, /main \{ container-type: inline-size; \}/);
+});
+
+test("the summary panel is a heading, one short disclosure and the controls, with no filler copy", () => {
+  assert.doesNotMatch(html, /A short recap and key points|AFTER THE CONVERSATION|Live captions use ElevenLabs\. Speech playback/);
+  assert.match(html, /<h2 id="summary-heading"[^>]*>Summary<\/h2>/);
+  assert.match(html, /Stopping a recording sends its transcript to Gemini\./);
+  assert.match(html, /id="summary-run"[^>]*title="Sends this session/);
+  assert.match(html, /id="summary-speak"[^>]*title="Reads the summary aloud with ElevenLabs"/);
 });
