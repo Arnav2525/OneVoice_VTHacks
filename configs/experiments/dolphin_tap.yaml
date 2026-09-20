@@ -54,8 +54,8 @@ video:
   iou_threshold: 0.3
   min_hits: 3
   attach_frame_bgr: false
-  max_age: 30
-  reid_window_ms: 2500.0
+  max_age: 90
+  reid_window_ms: 6000.0
 
 selection:
   mode: active_speaker
