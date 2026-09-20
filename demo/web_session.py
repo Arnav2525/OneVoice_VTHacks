@@ -18,6 +18,7 @@ MAX_BODY_BYTES = 2048
 BODY_LIMITS = {"/api/speak": 4096}
 STORY_ORIGINS = frozenset({"http://127.0.0.1:4319", "http://localhost:4319"})
 STATIC_FILES = {
+    "/explanations.js": ("explanations.js", "text/javascript; charset=utf-8"),
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
@@ -73,6 +74,8 @@ def session_payload(runner: Any) -> dict[str, Any]:
             for track in tracks
         ],
         "recording": recording,
+        "explanations": runner.explanations.snapshot()
+        if hasattr(runner, "explanations") else None,
         "record_busy": runner.record_busy,
         "busy": runner.busy,
         "synthetic": not runner.live,
@@ -336,6 +339,15 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
                     runner.toggle_recording()
                 elif action == "captions":
                     runner.toggle_captions()
+                elif action == "explain":
+                    from demo.context_explanations import capture_request
+
+                    try:
+                        with runner._record_io_lock:
+                            capture_request(runner)
+                    except ValueError as exc:
+                        self._json(409, {"error": str(exc)})
+                        return
                 elif action in ("select", "clear"):
                     track_id = payload.get("track_id") if action == "select" else None
                     if action == "select" and (

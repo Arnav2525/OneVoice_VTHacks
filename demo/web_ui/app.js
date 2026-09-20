@@ -536,6 +536,7 @@ function render() {
 }
 
 function accept(data) {
+  window.onevoiceExplanations?.(data);
   if (window.onevoiceRecordingSummary) {
     window.onevoiceRecordingSummary(data.recording_summary);
   }

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/app.css" />
     <script src="/app.js" defer></script>
     <script src="/summary.js" defer></script>
+    <script src="/explanations.js" defer></script>
   </head>
   <body data-phase="ready">
     <svg
@@ -259,6 +260,10 @@
           </div>
         </div>
 
+        <div id="explanation-controls">
+          <button id="explanation-request" class="text-button" disabled>Show me what they mean</button>
+          <span id="explanation-status" role="status">Start recording to capture a moment for explanation.</span>
+        </div>
         <section id="summary-panel" class="summary-panel glass" aria-labelledby="summary-heading" hidden>
           <div><span class="caption-kicker">AFTER THE CONVERSATION</span>
             <h2 id="summary-heading" tabindex="-1">Conversation summary</h2>
@@ -279,6 +284,10 @@
           <span id="summary-badge" class="summary-badge" hidden></span>
           <p id="summary-text"></p>
           <ul id="summary-points"></ul>
+          <div id="explanation-results" hidden>
+            <h3>What they meant</h3>
+            <div id="explanation-list"></div>
+          </div>
         </section>
         <div id="notice" class="notice" role="alert" hidden></div>
         <footer>

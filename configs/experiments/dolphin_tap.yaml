@@ -43,6 +43,9 @@ captions:
 
   model: scribe_v2_realtime
 
+explanations:
+  enabled: true
+
 video:
   device_index: 0
   identity_matching: true

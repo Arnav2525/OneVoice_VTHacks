@@ -8,6 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from demo.context_explanations import ContextExplanations
 from demo.devices import resolve_audio_device
 from demo.elevenlabs_transcription import ElevenLabsCaptions as SessionCaptions
 from demo.recording_summary import RecordingSummaries
@@ -270,6 +271,9 @@ class SessionRunner:
         self.state = SessionState("preview" if self.preview else "live")
         self.recorder = SessionRecorder()
         self.recording_summaries = RecordingSummaries()
+        self.explanations = ContextExplanations(
+            self.config.get("explanations", {}).get("enabled", True)
+        )
         self.captions = SessionCaptions(
             self.state, self.config.get("captions", {}),
             on_final=self.recorder.on_transcript,
@@ -311,6 +315,7 @@ class SessionRunner:
                 self.state.begin_start()
                 self.captions.clear_transcript()
                 self.recorder.begin_transcript_session()
+                self.explanations.reset()
             self._cancel.clear()
 
             self._stop_reason = None
@@ -463,6 +468,7 @@ class SessionRunner:
         active = self.recorder.snapshot().active
         path = self.recorder.stop_clip()
         if active and path is not None:
+            self.explanations.reveal(path)
             self.captions.finish_pending()
             self.recording_summaries.start(path, self.recorder.transcript_text())
 
