@@ -1,0 +1,17 @@
+
+audio:
+  input_device: null
+  output_device: null
+  sample_rate: 16000
+  channels: 1
+  chunk_samples: 320
+
+video:
+  device_index: 0
+  width: 640
+  height: 480
+  fps: 30.0
+
+gpu:
+  available: false
+  device_index: 0

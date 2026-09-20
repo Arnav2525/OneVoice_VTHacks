@@ -1,0 +1,35 @@
+
+name: phase7-avtse-first-track
+description: IoU tracking + first-face lock + AV-TSE (debug path).
+
+backend:
+  name: avtse
+  device: auto
+  precision: float32
+  sample_rate: 16000
+  chunk_size: 320
+  timeout_ms: 2000.0
+  params:
+    visual_max_age_ms: 120.0
+    no_target_policy: silence
+
+audio:
+  sample_rate: 16000
+  channels: 1
+  chunk_samples: 320
+
+video:
+  fps: 30.0
+  tracker: iou
+  min_detection_confidence: 0.5
+  iou_threshold: 0.3
+  min_hits: 3
+  max_age: 15
+  reid_window_ms: 1000.0
+
+selection:
+  mode: first_track
+
+targets:
+  end_to_end_latency_ms_max: 150.0
+  si_snr_improvement_db_min: 7.0

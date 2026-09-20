@@ -1,0 +1,14 @@
+
+name: speechbrain
+model_id: speechbrain/sepformer-wsj02mix
+device: auto
+precision: float32
+batch_size: 1
+chunk_size: null
+sample_rate: 8000
+warmup: true
+warmup_iterations: 2
+timeout_ms: 200.0
+fallback_on_error: true
+params:
+  savedir: pretrained_models/sepformer-wsj02mix

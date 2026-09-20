@@ -1,0 +1,44 @@
+{
+  "gate": "dolphin_tier_a_corpus",
+  "corpus": "GRID",
+  "zenodo_record": "3625687",
+  "doi": "10.5281/zenodo.3625687",
+  "license": "CC BY 4.0",
+  "talkers": ["s1", "s2", "s3", "s4", "s5", "s6", "s22", "s23"],
+  "mixes": [
+    {"mix_id": "corpus_mix_01", "pair": ["grid_s1", "grid_s5"], "gender": "M+F"},
+    {"mix_id": "corpus_mix_02", "pair": ["grid_s2", "grid_s6"], "gender": "M+F"},
+    {"mix_id": "corpus_mix_03", "pair": ["grid_s3", "grid_s22"], "gender": "M+F"},
+    {"mix_id": "corpus_mix_04", "pair": ["grid_s4", "grid_s23"], "gender": "M+F"}
+  ],
+  "bench": {
+    "segment_seconds": 2.0,
+    "max_clips": 8,
+    "gate_threshold_db": 7.0,
+    "gate_pass_count": 8,
+    "gate_total": 8,
+    "gate_passed": true,
+    "median_si_snr_improvement_db": 15.97,
+    "mean_si_snr_improvement_db": 15.92,
+    "run_dir": "runs/20260708-212145-dolphin_offline-dc0bd807"
+  },
+  "per_target": [
+    {"clip_id": "corpus_mix_04/s1", "si_snr_improvement_db": 15.24, "pass": true},
+    {"clip_id": "corpus_mix_04/s2", "si_snr_improvement_db": 15.37, "pass": true},
+    {"clip_id": "corpus_mix_03/s1", "si_snr_improvement_db": 17.05, "pass": true},
+    {"clip_id": "corpus_mix_03/s2", "si_snr_improvement_db": 16.59, "pass": true},
+    {"clip_id": "corpus_mix_02/s1", "si_snr_improvement_db": 15.52, "pass": true},
+    {"clip_id": "corpus_mix_02/s2", "si_snr_improvement_db": 18.46, "pass": true},
+    {"clip_id": "corpus_mix_01/s1", "si_snr_improvement_db": 16.43, "pass": true},
+    {"clip_id": "corpus_mix_01/s2", "si_snr_improvement_db": 12.68, "pass": true}
+  ],
+  "exports": [
+    "data/dolphin_tier_a/separated_outputs/corpus_mix_02_s2",
+    "data/dolphin_tier_a/separated_outputs/corpus_mix_03_s1"
+  ],
+  "hard_cases_excluded": [
+    "dolphin_demo1_s1.mp4",
+    "yt_default_1.mp4"
+  ],
+  "verdict": "TIER A COMPLETE — greenlight Tier B"
+}

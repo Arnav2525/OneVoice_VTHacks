@@ -1,0 +1,177 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "onevoice"
+version = "0.1.0"
+description = "OneVoice — real-time audio-visual target speech separation"
+authors = [{ name = "Contributor", email = "contributor@example.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.3.0",
+    "black>=23.0",
+    "mypy>=1.0",
+    "pre-commit>=3.0",
+]
+streaming = [
+    "numpy>=1.24",
+    "sounddevice>=0.4",
+    "opencv-python-headless>=4.8",
+]
+denoise = [
+    "numpy>=1.24",
+    "onnxruntime>=1.17",
+]
+perception = [
+    "numpy>=1.24",
+    "opencv-python-headless>=4.8",
+    "mediapipe>=0.10",
+]
+bench = [
+    "numpy>=1.24",
+    "psutil>=5.9",
+    "nvidia-ml-py>=12.0",
+    "pystoi>=0.3",
+    "pesq>=0.0.4",
+]
+torch = [
+    "numpy>=1.24",
+    "torch>=2.0",
+]
+speechbrain = [
+    "numpy>=1.24",
+    "torch>=2.0",
+    "speechbrain>=1.0",
+]
+asteroid = [
+    "numpy>=1.24",
+    "torch>=2.0",
+    "asteroid>=0.7",
+]
+clearvoice = [
+    "numpy>=1.24",
+    "torch>=2.0",
+    "clearvoice>=0.1",
+]
+demo = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+]
+transcription = [
+    "numpy>=1.24",
+    "faster-whisper>=1.0",
+]
+look_once_to_hear = [
+    "numpy>=1.24",
+    "torch>=2.0",
+    "torchaudio>=2.0",
+    "soundfile>=0.12",
+    "asteroid-filterbanks>=0.4",
+    "espnet>=202402",
+    "lightning>=2.0",
+    "gdown>=5.0",
+]
+dolphin = [
+    "numpy>=1.24",
+    "torch>=2.5",
+    "torchaudio>=2.5",
+    "imageio-ffmpeg>=0.5",
+    "torchvision>=0.20",
+    "soundfile>=0.12",
+    "opencv-python-headless>=4.8",
+    "huggingface_hub>=0.23",
+    "safetensors>=0.4",
+    "einops>=0.7",
+    "vector-quantize-pytorch>=1.14",
+    "taylor_series_linear_attention>=0.1.6",
+    "beartype>=0.18",
+    "retina-face>=0.0.17",
+    "tf-keras>=2.20",
+    "face-alignment>=1.4.1",
+    "moviepy>=2.0",
+    "scikit-image>=0.22",
+    "Pillow>=10.0",
+    "PyYAML>=6.0",
+    "yt-dlp>=2024.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/onevoice"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+lint.select = ["E", "F", "I", "UP", "N"]
+lint.ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/separation/test_real_inference.py" = ["E402"]
+"tests/separation/test_resample.py" = ["E402"]
+"demo/tap_to_select.py" = ["E402"]
+"demo/tap_selection.py" = ["E402"]
+"scripts/check_dolphin_quality.py" = ["E402"]
+"tests/demo/test_tap_selection.py" = ["E402"]
+"demo/transcription.py" = ["E402"]
+"tests/demo/test_transcription.py" = ["E402"]
+"demo/transcribe_ab.py" = ["E402"]
+"tests/demo/test_transcribe_ab.py" = ["E402"]
+"demo/level_meter.py" = ["E402"]
+"tests/demo/test_level_meter.py" = ["E402"]
+"demo/safety.py" = ["E402"]
+"tests/demo/test_safety.py" = ["E402"]
+"demo/safety_demo.py" = ["E402"]
+"tests/demo/test_safety_demo.py" = ["E402"]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "cv2",
+    "mediapipe",
+    "sounddevice",
+    "yaml",
+    "psutil",
+    "pynvml",
+    "pystoi",
+    "pesq",
+    "torch",
+    "torch.*",
+    "speechbrain.*",
+    "asteroid.*",
+    "clearvoice",
+    "gdown",
+    "look2hear.*",
+    "taylor_series_linear_attention",
+    "retinaface",
+    "retina_face",
+    "face_alignment",
+    "moviepy",
+    "skimage",
+    "PIL",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=src"
+testpaths = [
+    "tests",
+]

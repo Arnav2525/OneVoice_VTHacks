@@ -1,0 +1,30 @@
+
+name: speechbrain-sepformer
+description: Real SepFormer separation over the streaming pipeline (Phase 7).
+
+backend:
+  name: speechbrain
+  model_id: speechbrain/sepformer-wsj02mix
+  device: auto
+  precision: float32
+  sample_rate: 8000
+  resample: true
+  warmup: true
+  warmup_iterations: 2
+  timeout_ms: 1000.0
+  fallback_on_error: true
+  params:
+    savedir: pretrained_models/sepformer-wsj02mix
+
+audio:
+  sample_rate: 16000
+  channels: 1
+  chunk_samples: 320
+
+video:
+  fps: 30.0
+
+targets:
+  end_to_end_latency_ms_max: 150.0
+  real_time_factor_max: 1.0
+  min_throughput_fps: 10.0

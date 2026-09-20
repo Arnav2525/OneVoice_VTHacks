@@ -1,0 +1,17 @@
+name: look_once_to_hear
+device: auto
+precision: float32
+sample_rate: 16000
+chunk_size: 320
+resample: true
+warmup: true
+timeout_ms: 3000.0
+fallback_on_error: true
+params:
+  loth_root: null
+  checkpoint_rel: runs/tsh/best.ckpt
+  config_rel: configs/tsh.json
+  embed_checkpoint_rel: runs/embed/best.ckpt
+  embed_config_rel: configs/embed.json
+  enrollment_seconds: 3.0
+  no_target_policy: silence

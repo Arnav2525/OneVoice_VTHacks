@@ -1,0 +1,13 @@
+
+name: asteroid
+model_id: mpariente/ConvTasNet_Libri2Mix_sepclean_16k
+device: auto
+precision: float32
+batch_size: 1
+chunk_size: null
+sample_rate: 16000
+warmup: true
+warmup_iterations: 2
+timeout_ms: 200.0
+fallback_on_error: true
+params: {}

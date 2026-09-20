@@ -1,0 +1,15 @@
+
+name: clearvoice
+device: auto
+precision: float32
+batch_size: 1
+chunk_size: null
+sample_rate: 16000
+warmup: true
+warmup_iterations: 1
+timeout_ms: 200.0
+fallback_on_error: true
+params:
+  task: target_speaker_extraction
+  model_names:
+    - MossFormer2_SE_48K

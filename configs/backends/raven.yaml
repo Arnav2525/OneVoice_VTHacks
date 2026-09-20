@@ -1,0 +1,13 @@
+
+name: raven
+checkpoint: weights/raven/raven_causal.ts
+device: auto
+precision: float32
+batch_size: 1
+chunk_size: 320
+sample_rate: 16000
+warmup: true
+warmup_iterations: 2
+timeout_ms: 40.0
+fallback_on_error: true
+params: {}

@@ -1,0 +1,19 @@
+
+name: smoke
+description: Sprint 0 feasibility smoke run with mock sources and passthrough backend.
+
+backend:
+  name: passthrough
+
+audio:
+  sample_rate: 16000
+  channels: 1
+  chunk_samples: 320
+
+video:
+  fps: 30.0
+
+targets:
+  end_to_end_latency_ms_max: 150.0
+  real_time_factor_max: 1.0
+  min_throughput_fps: 10.0

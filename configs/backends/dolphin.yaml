@@ -1,0 +1,22 @@
+name: dolphin
+model_id: JusperLee/Dolphin
+device: auto
+precision: float32
+sample_rate: 16000
+chunk_size: 320
+resample: true
+warmup: true
+warmup_iterations: 1
+timeout_ms: 3000.0
+fallback_on_error: true
+params:
+  window_s: 2.0
+  hop_s: 0.75
+  mouth_size: 88
+  mouth_fps: 25
+  dolphin_light: false
+  visual_aligner: mediapipe
+  align_window_margin: 12
+  no_target_policy: silence
+  auto_gain: true
+  noise_floor: 0.0001

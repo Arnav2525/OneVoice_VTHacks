@@ -1,0 +1,40 @@
+
+name: phase7-dolphin-first-track
+description: IoU tracking + first-face lock + Dolphin buffered separation (debug path).
+
+backend:
+  name: dolphin
+  model_id: JusperLee/Dolphin
+  device: auto
+  precision: float32
+  sample_rate: 16000
+  chunk_size: 320
+  timeout_ms: 30000.0
+  warmup: false
+  params:
+    window_s: 2.0
+    hop_s: 0.75
+    visual_aligner: mediapipe
+    no_target_policy: silence
+
+audio:
+  sample_rate: 16000
+  channels: 1
+  chunk_samples: 320
+
+video:
+  fps: 30.0
+  tracker: iou
+  min_detection_confidence: 0.5
+  iou_threshold: 0.3
+  min_hits: 3
+  attach_frame_bgr: false
+  max_age: 30
+  reid_window_ms: 2500.0
+
+selection:
+  mode: first_track
+
+targets:
+  end_to_end_latency_ms_max: 1000.0
+  si_snr_improvement_db_min: 7.0

@@ -1,0 +1,14 @@
+name: avtse
+device: auto
+precision: float32
+sample_rate: 16000
+chunk_size: 320
+resample: true
+warmup: true
+timeout_ms: 500.0
+fallback_on_error: true
+params:
+  hidden_dim: 64
+  visual_embed_dim: 64
+  visual_max_age_ms: 120.0
+  no_target_policy: silence

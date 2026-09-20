@@ -1,0 +1,3 @@
+
+name: passthrough
+description: No-op separator used to validate the real-time pipeline plumbing.

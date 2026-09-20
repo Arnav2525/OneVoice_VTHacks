@@ -1,0 +1,54 @@
+
+name: phase7-dolphin-tap
+description: MediaPipe tracking, manual session tap-to-select, Dolphin buffered separation.
+
+backend:
+  name: dolphin
+  model_id: JusperLee/Dolphin
+  device: auto
+  precision: float32
+  sample_rate: 16000
+  chunk_size: 320
+  timeout_ms: 3000.0
+  params:
+    window_s: 2.0
+    hop_s: 0.5
+    output_mode: recent
+    lookahead_s: 0.5
+    crossfade_s: 0.02
+    visual_aligner: mediapipe
+    no_target_policy: silence
+    auto_gain: false
+    output_gain: 1.0
+
+audio:
+  sample_rate: 16000
+  channels: 1
+  chunk_samples: 320
+  input_device: null
+  output_device: null
+  cleanup:
+    enabled: false
+    cutoff_hz: 80.0
+  denoise:
+    enabled: true
+    model_path: checkpoints/gtcrn/gtcrn_simple.onnx
+
+video:
+  device_index: 1
+  identity_matching: true
+  fps: 30.0
+  tracker: iou
+  min_detection_confidence: 0.5
+  iou_threshold: 0.3
+  min_hits: 3
+  attach_frame_bgr: false
+  max_age: 30
+  reid_window_ms: 2500.0
+
+selection:
+  mode: active_speaker
+
+targets:
+  end_to_end_latency_ms_max: 1000.0
+  si_snr_improvement_db_min: 7.0

@@ -1,0 +1,33 @@
+
+name: perception-iou
+description: Real MediaPipe detection + IoU tracker over the streaming pipeline.
+
+backend:
+  name: passthrough
+
+audio:
+  sample_rate: 16000
+  channels: 1
+  chunk_samples: 320
+
+video:
+  fps: 30.0
+  tracker: iou
+  min_detection_confidence: 0.5
+  iou_threshold: 0.3
+  min_hits: 3
+  max_age: 15
+  reid_window_ms: 1000.0
+
+selection:
+  mode: active_speaker
+  acquire_thresh: 0.55
+  acquire_dwell_ms: 200.0
+  switch_margin: 0.15
+  switch_dwell_ms: 400.0
+  coast_ms: 500.0
+
+targets:
+  end_to_end_latency_ms_max: 150.0
+  real_time_factor_max: 1.0
+  min_throughput_fps: 10.0
