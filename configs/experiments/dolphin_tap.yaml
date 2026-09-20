@@ -39,8 +39,14 @@ audio:
     hold_ms: 500.0
     attenuation_db: 35.0
 
+captions:
+
+  device: cpu
+  model_size: small
+  compute_type: int8
+
 video:
-  device_index: 700
+  device_index: 0
   identity_matching: true
   fps: 30.0
   tracker: iou
@@ -48,8 +54,8 @@ video:
   iou_threshold: 0.3
   min_hits: 3
   attach_frame_bgr: false
-  max_age: 30
-  reid_window_ms: 2500.0
+  max_age: 90
+  reid_window_ms: 6000.0
 
 selection:
   mode: active_speaker

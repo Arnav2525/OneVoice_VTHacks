@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import argparse
@@ -41,6 +39,7 @@ from onevoice.video.capture import MockVideoSource  # noqa: E402
 
 logger = logging.getLogger("onevoice.safety_demo")
 
+
 def _audio_params(config: dict[str, Any]) -> tuple[int, int, int]:
     audio = config.get("audio", {})
     return (
@@ -49,12 +48,14 @@ def _audio_params(config: dict[str, Any]) -> tuple[int, int, int]:
         int(audio.get("chunk_samples", 320)),
     )
 
+
 def _print_state_change(active: bool, event: SafetyEvent | None) -> None:
 
     if active and event is not None:
         print(f"SAFETY OVERRIDE ACTIVE: {event.class_name} ({event.confidence:.2f})")
     else:
         print("safety override cleared")
+
 
 def build_safety_pipeline(
     config: dict[str, Any],
@@ -110,6 +111,7 @@ def build_safety_pipeline(
     )
     return pipeline, monitor
 
+
 def _build_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m demo.safety_demo",
@@ -134,8 +136,29 @@ def _build_argparser() -> argparse.ArgumentParser:
         default=3.0,
         help="seconds of no event before releasing",
     )
+    parser.add_argument(
+        "--real-detector",
+        action="store_true",
+        help="classify with YAMNet instead of the fake; needs the 'safety' extra",
+    )
     parser.add_argument("--log-level", default="INFO", help="logging level")
     return parser
+
+
+def _announce_detector(real_detector: bool) -> None:
+
+    if real_detector:
+        print(
+            "Detector: YAMNet, listening for "
+            f"{', '.join(sorted(DEFAULT_MONITORED_CLASSES))}. "
+            "Play an alarm near the microphone to trigger the override."
+        )
+    else:
+        print(
+            "Detector: FakeClassifier -- this run proves pipeline wiring only "
+            "and will never trigger. Pass --real-detector to classify for real."
+        )
+
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
@@ -145,9 +168,17 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     config = load_experiment_config(args.config)
+
+    classifier: SafetyClassifier | None = None
+    if args.real_detector:
+        from demo.safety import YamnetClassifier
+
+        classifier = YamnetClassifier(monitored_classes=set(DEFAULT_MONITORED_CLASSES))
+
     pipeline, monitor = build_safety_pipeline(
         config,
         live=args.live,
+        classifier=classifier,
         activate_thresh=args.activate_thresh,
         release_hold_s=args.release_hold_s,
     )
@@ -155,10 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         f"OneVoice safety passthrough demo -- live={args.live} "
         f"config={args.config or '(none, defaults)'}"
     )
-    print(
-        "NOTE: using FakeClassifier (no real detector wired in yet) -- this "
-        "run proves pipeline wiring only, it will never actually trigger."
-    )
+    _announce_detector(args.real_detector)
 
     try:
 
@@ -190,6 +218,7 @@ def main(argv: list[str] | None = None) -> int:
         monitor.is_active(),
     )
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
