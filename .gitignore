@@ -22,6 +22,10 @@ share/python-wheels/
 MANIFEST
 
 .env
+.env.*
+!.env.example
+*.key
+*.pem
 .venv
 env/
 venv/

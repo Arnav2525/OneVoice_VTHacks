@@ -7,6 +7,7 @@
     <title>OneVoice · Your listening space</title>
     <link rel="stylesheet" href="/app.css" />
     <script src="/app.js" defer></script>
+    <script src="/summary.js" defer></script>
   </head>
   <body data-phase="ready">
     <svg
@@ -268,6 +269,27 @@
           </div>
         </div>
 
+        <section class="summary-panel glass" aria-labelledby="summary-heading">
+          <div><span class="caption-kicker">AFTER THE CONVERSATION</span>
+            <h2 id="summary-heading">Conversation summary</h2>
+            <p>Summarize what the selected person said, using their live captions.</p>
+          </div>
+          <p class="summary-disclosure">Summarize sends the selected person’s caption text from this session to Google (Gemini). Captions are transcribed on this computer, and that text is kept in memory only until you start a new session or quit. Speak sends only the summary text to ElevenLabs, and only when you press it or turn on automatic speaking, which is off by default and resets on reload.</p>
+          <div class="summary-actions">
+            <button id="summary-run" class="primary-button">Summarize with Gemini</button>
+            <button id="summary-speak" class="text-button" disabled>Speak with ElevenLabs</button>
+            <label class="summary-auto" for="summary-auto">
+              <input id="summary-auto" type="checkbox" autocomplete="off" />
+              Speak each summary automatically
+            </label>
+            <button id="summary-sample" class="text-button">Play scripted demo</button>
+            <button id="summary-clear" class="text-button">Clear</button>
+          </div>
+          <p id="summary-status" role="status" aria-live="polite">Turn on Captions and let the selected person speak, then summarize.</p>
+          <span id="summary-badge" class="summary-badge" hidden></span>
+          <p id="summary-text"></p>
+          <ul id="summary-points"></ul>
+        </section>
         <div id="notice" class="notice" role="alert" hidden></div>
         <footer>
           <span>DESIGNED TO KEEP YOU IN THE CONVERSATION</span

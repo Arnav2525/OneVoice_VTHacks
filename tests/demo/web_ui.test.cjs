@@ -306,3 +306,80 @@ test("a JPEG decode spanning navigation cannot create a second frame polling loo
   assert.ok(h.revoked.includes(h.images[0].url));
   assert.equal([...h.timers.values()].filter((timer) => timer.fn.name === "frames").length, 1);
 });
+
+async function bootWithFrame(h, data) {
+  await h.boot(data);
+  const pendingFrame = h.takeTimer("frames");
+  h.respond(h.latest("/api/frame"), null);
+  await flush();
+  await pendingFrame;
+  h.evaluate(`accept(${JSON.stringify(data)})`);
+}
+
+const bubbleCaptions = (overrides = {}) => ({
+  enabled: true,
+  status: "ready",
+  error: null,
+  current: { track_id: "person-1", text: "Hello there", timestamp_ms: 5 },
+  ...overrides,
+});
+
+test("live caption bubble shows the selected person's words above their box", async () => {
+  const h = harness();
+  await bootWithFrame(h, payload("isolating", { captions: bubbleCaptions() }));
+  const bubble = h.get("live-caption");
+  assert.equal(bubble.hidden, false);
+  assert.equal(bubble.classList.contains("visible"), true);
+  assert.equal(h.get("live-caption-text").textContent, "Hello there");
+  assert.equal(bubble.style.left, "70px");
+  assert.equal(bubble.style.top, "30px");
+});
+
+test("live caption bubble stays hidden for other people, other phases and preview scenes", async () => {
+  const other = harness();
+  await other.boot(
+    payload("isolating", {
+      captions: bubbleCaptions({ current: { track_id: "person-2", text: "Not selected", timestamp_ms: 5 } }),
+    }),
+  );
+  assert.equal(other.get("live-caption").hidden, true);
+
+  const listening = harness();
+  await listening.boot(payload("listening", { captions: bubbleCaptions() }));
+  assert.equal(listening.get("live-caption").hidden, true);
+
+  const synthetic = harness();
+  await synthetic.boot(payload("isolating", { synthetic: true, captions: bubbleCaptions() }));
+  assert.equal(synthetic.get("live-caption").hidden, true);
+});
+
+test("live caption bubble fades after a quiet spell and returns with the next line", async () => {
+  const h = harness();
+  await h.boot(payload("isolating", { captions: bubbleCaptions() }));
+  assert.equal(h.get("live-caption").hidden, false);
+  h.advance(9000);
+  h.evaluate(`accept(${JSON.stringify(payload("isolating", { captions: bubbleCaptions() }))})`);
+  assert.equal(h.get("live-caption").hidden, true);
+  const next = bubbleCaptions({ current: { track_id: "person-1", text: "Second line", timestamp_ms: 9 } });
+  h.evaluate(`accept(${JSON.stringify(payload("isolating", { captions: next }))})`);
+  assert.equal(h.get("live-caption").hidden, false);
+  assert.equal(h.get("live-caption-text").textContent, "Second line");
+});
+
+test("live caption bubble stays inside the video when the person is at the top or an edge", async () => {
+  const h = harness();
+  h.get("live-caption").offsetWidth = 200;
+  h.get("live-caption").offsetHeight = 40;
+  const nearTop = payload("isolating", { captions: bubbleCaptions() });
+  nearTop.tracks[0].bounding_box = [0, 10, 60, 150];
+  await bootWithFrame(h, nearTop);
+  const bubble = h.get("live-caption");
+  assert.equal(bubble.style.top, "54px");
+  assert.equal(bubble.style.left, "100px");
+
+  const nearRight = payload("isolating", { captions: bubbleCaptions() });
+  nearRight.tracks[0].bounding_box = [600, 200, 40, 100];
+  h.evaluate(`accept(${JSON.stringify(nearRight)})`);
+  assert.equal(bubble.style.left, "540px");
+  assert.equal(bubble.style.top, "200px");
+});
