@@ -409,26 +409,36 @@ def _post(server, path, payload, **extra):
     )
 
 
-def test_explain_endpoint_is_same_origin_and_does_not_start_capture(
+def test_summarize_endpoint_sends_only_the_server_side_transcript(
     local_server, monkeypatch
 ):
     server, runner = local_server
-    provider = Mock(
-        return_value={"status": "not_found", "explanation": "No match", "objects": []}
-    )
-    monkeypatch.setattr("demo.visual_explain.explain", provider)
-    payload = {"image": "test", "utterance": "a cable"}
-    status, _, _ = _post(
-        server, "/api/explain", payload, Origin="https://other.example"
-    )
+    runner.captions = SimpleNamespace(transcript_text=lambda: "Person: hello there")
+    provider = Mock(return_value={"summary": "A greeting.", "key_points": []})
+    monkeypatch.setattr("demo.summary.summarize", provider)
+    status, _, _ = _post(server, "/api/summarize", {}, Origin="https://other.example")
     assert status == 403
     provider.assert_not_called()
-    status, _, data = _post(server, "/api/explain", payload)
-    assert status == 200 and json.loads(data)["status"] == "not_found"
+    status, _, data = _post(server, "/api/summarize", {"text": "client text ignored"})
+    assert status == 200 and json.loads(data)["summary"] == "A greeting."
+    provider.assert_called_once_with("Person: hello there")
     assert runner.starts == 0
-    with server.explain_lock:
-        assert _post(server, "/api/explain", payload)[0] == 409
-    assert provider.call_count == 1
+    with server.summary_lock:
+        assert _post(server, "/api/summarize", {})[0] == 409
+
+
+def test_summarize_needs_captions_and_maps_provider_errors(local_server, monkeypatch):
+    server, runner = local_server
+    status, _, data = _post(server, "/api/summarize", {})
+    assert status == 409 and "No captions yet" in json.loads(data)["error"]
+    runner.captions = SimpleNamespace(transcript_text=lambda: "   ")
+    assert _post(server, "/api/summarize", {})[0] == 409
+    runner.captions = SimpleNamespace(transcript_text=lambda: "Person: hi")
+    monkeypatch.setattr(
+        "demo.summary.summarize", Mock(side_effect=RuntimeError("Set the key"))
+    )
+    status, _, data = _post(server, "/api/summarize", {})
+    assert status == 502 and "Set the key" in json.loads(data)["error"]
 
 
 def test_speak_endpoint_returns_wav_and_rejects_foreign_origin(

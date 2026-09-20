@@ -7,7 +7,7 @@
     <title>OneVoice · Your listening space</title>
     <link rel="stylesheet" href="/app.css" />
     <script src="/app.js" defer></script>
-    <script src="/explain.js" defer></script>
+    <script src="/summary.js" defer></script>
   </head>
   <body data-phase="ready">
     <svg
@@ -269,37 +269,26 @@
           </div>
         </div>
 
-        <section class="explain-panel glass" aria-labelledby="explain-heading">
-          <div><span class="caption-kicker">WORDS MEET THE WORLD</span>
-            <h2 id="explain-heading">Show me what they mean</h2>
-            <p>Freeze a moment, then explain the object someone referred to.</p>
+        <section class="summary-panel glass" aria-labelledby="summary-heading">
+          <div><span class="caption-kicker">AFTER THE CONVERSATION</span>
+            <h2 id="summary-heading">Conversation summary</h2>
+            <p>Summarize what the selected person said, using their live captions.</p>
           </div>
-          <div class="explain-actions">
-            <button id="explain-freeze" class="primary-button">Freeze selected person’s scene</button>
-            <button id="explain-sample" class="text-button">Load CPU demo</button>
-          </div>
-          <p id="explain-source">No snapshot yet. CPU demo uses a drawn scene and scripted sentence.</p>
-          <label for="explain-utterance">Sentence to explain · entered manually</label>
-          <textarea id="explain-utterance" maxlength="1000" rows="2" placeholder="Type or paste what the selected person said."></textarea>
-          <p class="explain-disclosure">Explain with Gemini sends this frozen image and sentence to Google. Speak sends only the explanation text to ElevenLabs, and only when you press it or turn on automatic speaking, which is off by default and resets on reload. No continuous video is sent.</p>
-          <div class="explain-actions">
-            <button id="explain-send" class="primary-button" disabled>Explain with Gemini</button>
-            <button id="explain-speak" class="text-button" disabled>Speak with ElevenLabs</button>
-            <label class="explain-auto" for="explain-auto">
-              <input id="explain-auto" type="checkbox" autocomplete="off" />
-              Speak each answer automatically
+          <p class="summary-disclosure">Summarize sends the selected person’s caption text from this session to Google (Gemini). Captions are transcribed on this computer, and that text is kept in memory only until you start a new session or quit. Speak sends only the summary text to ElevenLabs, and only when you press it or turn on automatic speaking, which is off by default and resets on reload.</p>
+          <div class="summary-actions">
+            <button id="summary-run" class="primary-button">Summarize with Gemini</button>
+            <button id="summary-speak" class="text-button" disabled>Speak with ElevenLabs</button>
+            <label class="summary-auto" for="summary-auto">
+              <input id="summary-auto" type="checkbox" autocomplete="off" />
+              Speak each summary automatically
             </label>
-            <button id="explain-replay" class="text-button" disabled>Play scripted result</button>
-            <button id="explain-clear" class="text-button">Clear</button>
+            <button id="summary-sample" class="text-button">Play scripted demo</button>
+            <button id="summary-clear" class="text-button">Clear</button>
           </div>
-          <p id="explain-status" role="status" aria-live="polite">Choose a snapshot to begin.</p>
-          <span id="explain-badge" class="explain-badge" hidden></span>
-          <blockquote id="explain-quote" hidden></blockquote>
-          <p id="explain-answer"></p>
-          <div class="explain-image" id="explain-image" hidden>
-            <canvas id="explain-canvas" aria-label="Frozen scene with numbered object highlights"></canvas>
-          </div>
-          <div id="explain-choices" class="explain-actions"></div>
+          <p id="summary-status" role="status" aria-live="polite">Turn on Captions and let the selected person speak, then summarize.</p>
+          <span id="summary-badge" class="summary-badge" hidden></span>
+          <p id="summary-text"></p>
+          <ul id="summary-points"></ul>
         </section>
         <div id="notice" class="notice" role="alert" hidden></div>
         <footer>

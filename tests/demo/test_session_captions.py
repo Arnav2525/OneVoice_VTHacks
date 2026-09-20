@@ -302,3 +302,49 @@ def test_cpu_failure_is_not_swallowed(monkeypatch):
         assert "corrupt" in str(exc)
     else:
         raise AssertionError("cpu failure was swallowed")
+
+
+def _speak(captions: SessionCaptions, epoch: int, text: str) -> None:
+    captions._on_transcript(str(epoch), text, 1.0)
+
+
+def test_transcript_collects_only_the_selected_speakers_current_epoch() -> None:
+    state = _ready_state()
+    captions = SessionCaptions(state, transcriber_factory=FakeTranscriber)
+    assert captions.transcript_text() == ""
+    state.select("a")
+    _, epoch = state.selection()
+    _speak(captions, epoch, "  hello there ")
+    _speak(captions, epoch - 1, "stale epoch line")
+    _speak(captions, epoch, "   ")
+    expected = f"{state.person_name('a')}: hello there"
+    assert captions.transcript_text() == expected
+    state.select(None)
+    _speak(captions, epoch, "nobody is selected")
+    assert captions.transcript_text() == expected
+
+
+def test_transcript_is_bounded_and_keeps_the_newest_lines() -> None:
+    state = _ready_state()
+    captions = SessionCaptions(state, transcriber_factory=FakeTranscriber)
+    state.select("a")
+    _, epoch = state.selection()
+    for number in range(400):
+        _speak(captions, epoch, f"line {number}")
+    lines = captions.transcript_text(max_chars=10_000_000).splitlines()
+    assert len(lines) == 300 and lines[-1].endswith("line 399")
+    short = captions.transcript_text(max_chars=60).splitlines()
+    assert short and short[-1].endswith("line 399") and sum(map(len, short)) < 60
+
+
+def test_transcript_clears_on_request_and_on_close() -> None:
+    state = _ready_state()
+    captions = SessionCaptions(state, transcriber_factory=FakeTranscriber)
+    state.select("a")
+    _, epoch = state.selection()
+    _speak(captions, epoch, "keep me")
+    captions.clear_transcript()
+    assert captions.transcript_text() == ""
+    _speak(captions, epoch, "again")
+    captions.close()
+    assert captions.transcript_text() == ""

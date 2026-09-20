@@ -17,13 +17,13 @@ from urllib.parse import urlsplit
 logger = logging.getLogger(__name__)
 UI_ROOT = Path(__file__).resolve().parent / "web_ui"
 MAX_BODY_BYTES = 2048
-BODY_LIMITS = {"/api/explain": 2_000_000, "/api/speak": 4096}
+BODY_LIMITS = {"/api/speak": 4096}
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
-    "/explain.js": ("explain.js", "text/javascript; charset=utf-8"),
+    "/summary.js": ("summary.js", "text/javascript; charset=utf-8"),
     "/assets/arc_hero.png": ("assets/arc_hero.png", "image/png"),
 }
 
@@ -89,7 +89,7 @@ class SessionHTTPServer(ThreadingHTTPServer):
         self.runner = runner
         self.ui_root = ui_root
         self.action_lock = threading.Lock()
-        self.explain_lock = threading.Lock()
+        self.summary_lock = threading.Lock()
         self.speak_lock = threading.Lock()
         self.closing = False
         self.cleanup_ok = True
@@ -283,8 +283,8 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
         if payload is None:
             return
         path = urlsplit(self.path).path
-        if path == "/api/explain":
-            self._explain(payload)
+        if path == "/api/summarize":
+            self._summarize()
             return
         if path == "/api/speak":
             self._speak(payload)
@@ -333,18 +333,28 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
             logger.exception("Browser UI action failed")
             self._json(500, {"error": "The action failed. Stop and retry."})
 
-    def _explain(self, payload: dict[str, Any]) -> None:
-        from demo.visual_explain import explain
+    def _summarize(self) -> None:
+        from demo.summary import summarize
 
-        if not self.server.explain_lock.acquire(blocking=False):
-            self._json(409, {"error": "An explanation is already in progress."})
+        if not self.server.summary_lock.acquire(blocking=False):
+            self._json(409, {"error": "A summary is already in progress."})
             return
         try:
             if self.server.closing:
                 self._json(409, {"error": "The session is closing."})
                 return
-            result = explain(payload.get("image"), payload.get("utterance"))
-            self._json(200, result)
+            captions = getattr(self.server.runner, "captions", None)
+            transcript = captions.transcript_text() if captions is not None else ""
+            if not transcript.strip():
+                self._json(
+                    409,
+                    {
+                        "error": "No captions yet. Turn on Captions and let the "
+                        "selected person speak first."
+                    },
+                )
+                return
+            self._json(200, summarize(transcript))
         except ValueError as exc:
             self._json(400, {"error": str(exc)})
         except RuntimeError as exc:
@@ -352,10 +362,10 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
         except Exception:
-            logger.exception("Explain failed")
-            self._json(500, {"error": "Could not explain this image. Please retry."})
+            logger.exception("Summary failed")
+            self._json(500, {"error": "Could not summarize. Please retry."})
         finally:
-            self.server.explain_lock.release()
+            self.server.summary_lock.release()
 
     def _speak(self, payload: dict[str, Any]) -> None:
         from demo.speech import SAMPLE_RATE, synthesize, to_wav

@@ -256,6 +256,7 @@ class SessionRunner:
                 self.state.begin_stop()
             else:
                 self.state.begin_start()
+                self.captions.clear_transcript()
             self._cancel.clear()
             self._launch_worker(start_session=True)
 
