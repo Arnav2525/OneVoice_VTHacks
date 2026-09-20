@@ -5,6 +5,6 @@
   "type": "module",
   "scripts": {
     "start": "node server.cjs",
-    "check": "node --check scene.js && node --check main.js && node --check about-yeti.js && node --check terrain.js && node --check weather.js && node --check yeti.js && node --check server.cjs && node --check atmosphere.js && node --check startup.js && node --check journey.js && node --check word-particles.js && node --check loadprogress.js"
+    "check": "node --check scene.js && node --check main.js && node --check about-yeti.js && node --check terrain.js && node --check weather.js && node --check yeti.js && node --check server.cjs && node --check atmosphere.js && node --check startup.js && node --check journey.js && node --check word-particles.js && node --check loadprogress.js && node --check hosted.js"
   }
 }
