@@ -1,4 +1,5 @@
 import {createWorld} from './scene.js';
+import {isHosted} from './hosted.js';
 const $=selector=>document.querySelector(selector);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const expedition=$('.expedition'),worldElement=$('.world'),chapters=[...document.querySelectorAll('[data-chapter]')],jumps=[...document.querySelectorAll('[data-jump]')];
@@ -39,12 +40,16 @@ $('#light-toggle').addEventListener('click',()=>{const b=$('#light-toggle'),valu
 for(const pin of document.querySelectorAll('[data-detail]'))pin.addEventListener('click',()=>{world?.reset();goToProgress((Number(pin.dataset.detail)+1)/6);});
 function updateMotion(){const button=$('#motion-toggle');button.textContent=paused?'MOTION OFF':'MOTION ON';button.setAttribute('aria-pressed',String(paused));button.setAttribute('aria-label',paused?'Resume ambient motion':'Pause ambient motion');world?.setPaused(paused);}updateMotion();
 $('#motion-toggle').addEventListener('click',()=>{paused=!paused;updateMotion();});reduced.addEventListener('change',e=>{paused=e.matches;updateMotion();});
-createWorld($('#world-canvas'),()=>$('#loading').classList.add('done'),()=>location.assign('about.html?arrival=yeti')).then(result=>{world=result;$("#travel-toggle").disabled=false;updateMotion();world.setDetails($("#details-toggle").getAttribute("aria-pressed")==="true");world.setSunset($("#light-toggle").getAttribute("aria-pressed")==="true");}).catch(error=>{console.error('3D scene could not start',error);sceneFailed=true;$('#loading').classList.add('done');$('#world-error').hidden=false;for(const el of document.querySelectorAll('.scene-controls button'))el.disabled=true;});
+createWorld($('#world-canvas'),()=>$('#loading').classList.add('done'),()=>location.assign('about.html?arrival=yeti')).then(result=>{world=result;$("#travel-toggle").disabled=false;updateMotion();world.setDetails($("#details-toggle").getAttribute("aria-pressed")==="true");world.setSunset($("#light-toggle").getAttribute("aria-pressed")==="true");showLinkedNotice();}).catch(error=>{console.error('3D scene could not start',error);sceneFailed=true;$('#loading').classList.add('done');$('#world-error').hidden=false;for(const el of document.querySelectorAll('.scene-controls button'))el.disabled=true;showLinkedNotice();});
 
 const dialog=$('#connection-dialog');
+for(const node of dialog.querySelectorAll('[data-when]'))node.hidden=node.dataset.when!==(isHosted?'hosted':'local');
+let noticePending=isHosted&&new URLSearchParams(location.search).get('demo')==='laptop';
+function showLinkedNotice(){if(!noticePending)return;noticePending=false;history.replaceState(null,'',location.pathname);connectToApp();}
 const appUrl='http://127.0.0.1:8771/';
 let connecting=false,appCheck=null,appCheckStarted=0,appPrefetchStarted=false;
 function checkApp(){
+  if(isHosted)return Promise.reject(new Error('The listening app runs on the demo laptop'));
   if(appCheck&&Date.now()-appCheckStarted<5000)return appCheck;
   appCheckStarted=Date.now();
   appCheck=fetch(`${appUrl}api/ping`,{cache:'no-store',signal:AbortSignal.timeout(2500)})
