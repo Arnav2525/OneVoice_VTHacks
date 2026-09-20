@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import logging
@@ -11,13 +9,80 @@ from demo.session_state import SessionState
 
 logger = logging.getLogger(__name__)
 
-def _default_transcriber() -> Any:
+
+def _cuda_visible() -> bool:
+    try:
+        import ctranslate2
+
+        return ctranslate2.get_cuda_device_count() > 0
+    except Exception:
+        return False
+
+
+def resolve_caption_settings(config: dict[str, Any] | None) -> dict[str, str]:
+    """large-v3 on cuda, small on cpu; explicit ``captions:`` config wins."""
+    captions = (config or {}).get("captions") or {}
+    device = str(captions.get("device", "auto")).lower()
+    if device == "auto":
+        device = "cuda" if _cuda_visible() else "cpu"
+    default_model = "large-v3" if device == "cuda" else "small"
+    return {
+        "model_size": str(captions.get("model_size") or default_model),
+        "device": device,
+        "compute_type": str(captions.get("compute_type") or "int8"),
+    }
+
+
+_WARMUP_SAMPLES = 3200
+
+
+def _validated_transcriber(settings: dict[str, str]) -> Any:
+    """Load the model, then run one tiny transcribe to prove it works.
+
+    A GPU can be visible and the model can load while inference still fails
+    (missing cuBLAS DLLs), so a cuda failure here falls back to cpu/small.
+    """
+    import numpy as np
+
     from demo.transcription import FasterWhisperTranscriber
 
-    return FasterWhisperTranscriber(model_size="large-v3", device="cuda")
+    def _build(device: str, model_size: str) -> Any:
+        transcriber = FasterWhisperTranscriber(
+            model_size=model_size,
+            device=device,
+            compute_type=settings["compute_type"],
+        )
+        transcriber.transcribe(np.zeros(_WARMUP_SAMPLES, dtype=np.float32), 16_000)
+        return transcriber
+
+    try:
+        return _build(settings["device"], settings["model_size"])
+    except Exception as exc:
+        if settings["device"] != "cuda":
+            raise
+        fallback = (
+            "small" if settings["model_size"] == "large-v3" else settings["model_size"]
+        )
+        logger.warning(
+            "Captions: CUDA unusable (%s: %s); falling back to cpu/%s",
+            type(exc).__name__,
+            exc,
+            fallback,
+        )
+        return _build("cpu", fallback)
+
+
+def build_transcriber_factory(config: dict[str, Any] | None) -> Callable[[], Any]:
+    settings = resolve_caption_settings(config)
+    logger.info("Captions ASR requested: %s", settings)
+    return lambda: _validated_transcriber(settings)
+
+
+def _default_transcriber() -> Any:
+    return build_transcriber_factory(None)()
+
 
 class SessionCaptions:
-
     def __init__(
         self,
         state: SessionState,

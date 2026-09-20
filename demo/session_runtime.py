@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import copy
@@ -11,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from demo.devices import resolve_audio_device
-from demo.session_captions import SessionCaptions
+from demo.session_captions import SessionCaptions, build_transcriber_factory
 from demo.session_recording import SessionRecorder
 from demo.session_state import SessionState
 from demo.tap_selection import TrackObservingSelector
@@ -25,8 +23,8 @@ from onevoice.video.capture import MockVideoSource
 
 logger = logging.getLogger(__name__)
 
-class PreviewTracker:
 
+class PreviewTracker:
     def __init__(self) -> None:
         self.hidden: set[str] = set()
 
@@ -42,8 +40,8 @@ class PreviewTracker:
             if f"preview-{i}" not in self.hidden
         ]
 
-class SessionSelector:
 
+class SessionSelector:
     def __init__(self, state: SessionState) -> None:
         self.state = state
 
@@ -60,6 +58,7 @@ class SessionSelector:
         )
         return TargetSelection(frame.timestamp_ms, track)
 
+
 class ObservedSource:
     def __init__(self, source: Any, callback: Any) -> None:
         self.source, self.callback = source, callback
@@ -75,8 +74,8 @@ class ObservedSource:
         self.callback(value)
         return value
 
-class EpochSeparator:
 
+class EpochSeparator:
     def __init__(self, inner: Any, state: SessionState) -> None:
         self.inner, self.state = inner, state
 
@@ -85,7 +84,6 @@ class EpochSeparator:
         actual = target.selected_speaker
         matches = actual is not None and actual.track_id == requested
         if actual is not None:
-
             target = replace(
                 target,
                 selected_speaker=replace(
@@ -110,6 +108,7 @@ class EpochSeparator:
         if callable(close):
             close()
 
+
 def _ramp(samples: Any, *, rising: bool, length: int) -> list[float]:
 
     values = [float(v) for v in samples]
@@ -117,7 +116,6 @@ def _ramp(samples: Any, *, rising: bool, length: int) -> list[float]:
     if span <= 0:
         return values
     for i in range(span):
-
         phase = (i + 0.5) / span
         gain = 0.5 - 0.5 * math.cos(math.pi * phase)
         values[i] *= gain if rising else (1.0 - gain)
@@ -126,8 +124,8 @@ def _ramp(samples: Any, *, rising: bool, length: int) -> list[float]:
             values[i] = 0.0
     return values
 
-class SessionSink:
 
+class SessionSink:
     def __init__(
         self,
         sink: Any,
@@ -173,7 +171,6 @@ class SessionSink:
             if not allowed:
                 processor.reset()
         if allowed and not self._was_allowed:
-
             delivered = replace(
                 chunk,
                 data=_ramp(chunk.data, rising=True, length=self._fade_samples),
@@ -182,7 +179,6 @@ class SessionSink:
         elif allowed:
             delivered = chunk
         elif self._was_allowed:
-
             delivered = replace(
                 chunk,
                 data=_ramp(chunk.data, rising=False, length=self._fade_samples),
@@ -206,6 +202,7 @@ class SessionSink:
 
         self.captions.on_output(chunk, allowed)
 
+
 class SessionRunner:
     def __init__(
         self,
@@ -225,7 +222,9 @@ class SessionRunner:
         )
         self.state = SessionState("preview" if self.preview else "live")
         self.recorder = SessionRecorder()
-        self.captions = SessionCaptions(self.state)
+        self.captions = SessionCaptions(
+            self.state, build_transcriber_factory(self.config)
+        )
         self.record_root = record_root
         self._record_control_lock = threading.Lock()
         self._record_io_lock = threading.Lock()
@@ -365,7 +364,6 @@ class SessionRunner:
                 if stopping:
                     self.recorder.stop_clip()
                 elif self._recording_allowed():
-
                     self.recorder.start_clip(self.record_root, self.state.mode)
                     if not self._recording_allowed():
                         self.recorder.stop_clip()

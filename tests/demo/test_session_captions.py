@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import array
@@ -18,9 +16,8 @@ from demo.transcription import FakeTranscriber  # noqa: E402
 from onevoice.core.models.audio_chunk import AudioChunk  # noqa: E402
 from onevoice.core.models.speaker_track import SpeakerTrack  # noqa: E402
 
-def _chunk(
-    track_id: str, epoch: int, samples: list[float] | None = None
-) -> AudioChunk:
+
+def _chunk(track_id: str, epoch: int, samples: list[float] | None = None) -> AudioChunk:
     samples = samples if samples is not None else [0.2] * 16_000
     return AudioChunk(
         10_000.0,
@@ -29,6 +26,7 @@ def _chunk(
         1,
         {"target_track_id": track_id, "ui_selection_epoch": epoch},
     )
+
 
 def _ready_state() -> SessionState:
     state = SessionState("live", clock=lambda: 10.0)
@@ -42,6 +40,7 @@ def _ready_state() -> SessionState:
     )
     return state
 
+
 def _wait_for(predicate, timeout: float = 2.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -50,10 +49,12 @@ def _wait_for(predicate, timeout: float = 2.0) -> bool:
         time.sleep(0.01)
     return False
 
+
 def _flush_one_segment(captions: SessionCaptions, track_id: str, epoch: int) -> None:
 
     for _ in range(6):
         captions.on_output(_chunk(track_id, epoch), allowed=True)
+
 
 def test_disabled_by_default_and_never_fed() -> None:
     state = _ready_state()
@@ -67,6 +68,7 @@ def test_disabled_by_default_and_never_fed() -> None:
     assert state.select("a")
     captions.on_output(_chunk("a", state.selection()[1]), allowed=True)
     assert captions.snapshot()["current"] is None
+
 
 def test_toggle_on_lazily_loads_once_and_reuses_across_toggles() -> None:
     load_calls = []
@@ -93,6 +95,7 @@ def test_toggle_on_lazily_loads_once_and_reuses_across_toggles() -> None:
     finally:
         captions.close()
 
+
 def test_load_failure_reports_error_and_disables() -> None:
     def factory():
         raise RuntimeError("no CUDA device")
@@ -104,6 +107,7 @@ def test_load_failure_reports_error_and_disables() -> None:
     snapshot = captions.snapshot()
     assert not snapshot["enabled"]
     assert "no CUDA device" in (snapshot["error"] or "")
+
 
 def test_caption_appears_for_the_selected_speaker() -> None:
     state = _ready_state()
@@ -123,6 +127,7 @@ def test_caption_appears_for_the_selected_speaker() -> None:
     finally:
         captions.close()
 
+
 def test_muted_or_unselected_audio_is_never_fed_to_the_model() -> None:
     state = _ready_state()
     captions = SessionCaptions(
@@ -139,6 +144,7 @@ def test_muted_or_unselected_audio_is_never_fed_to_the_model() -> None:
         assert captions.snapshot()["current"] is None
     finally:
         captions.close()
+
 
 def test_deselecting_clears_the_caption() -> None:
     state = _ready_state()
@@ -158,6 +164,7 @@ def test_deselecting_clears_the_caption() -> None:
         assert captions.snapshot()["current"] is None
     finally:
         captions.close()
+
 
 def test_switching_target_never_attributes_a_stale_transcript_to_the_new_person() -> (
     None
@@ -191,6 +198,7 @@ def test_switching_target_never_attributes_a_stale_transcript_to_the_new_person(
         release.set()
         captions.close()
 
+
 def test_retire_current_sink_stops_without_disabling() -> None:
     state = _ready_state()
     captions = SessionCaptions(
@@ -210,6 +218,7 @@ def test_retire_current_sink_stops_without_disabling() -> None:
     finally:
         captions.close()
 
+
 def test_close_releases_the_model_and_resets_status() -> None:
     state = _ready_state()
     captions = SessionCaptions(state, transcriber_factory=FakeTranscriber)
@@ -222,3 +231,74 @@ def test_close_releases_the_model_and_resets_status() -> None:
         "error": None,
         "current": None,
     }
+
+
+def test_resolve_prefers_large_v3_on_cuda_and_small_on_cpu(monkeypatch):
+    import demo.session_captions as mod
+
+    monkeypatch.setattr(mod, "_cuda_visible", lambda: True)
+    assert mod.resolve_caption_settings(None)["model_size"] == "large-v3"
+    monkeypatch.setattr(mod, "_cuda_visible", lambda: False)
+    settings = mod.resolve_caption_settings({})
+    assert (settings["device"], settings["model_size"]) == ("cpu", "small")
+
+
+def test_explicit_captions_config_wins(monkeypatch):
+    import demo.session_captions as mod
+
+    monkeypatch.setattr(mod, "_cuda_visible", lambda: True)
+    settings = mod.resolve_caption_settings(
+        {"captions": {"device": "cpu", "model_size": "base", "compute_type": "float32"}}
+    )
+    assert settings == {
+        "model_size": "base",
+        "device": "cpu",
+        "compute_type": "float32",
+    }
+
+
+class _CudaBrokenTranscriber:
+    built: list = []
+
+    def __init__(self, model_size, device, compute_type):
+        self.device, self.model_size = device, model_size
+        _CudaBrokenTranscriber.built.append((device, model_size))
+
+    def transcribe(self, audio, sample_rate):
+        if self.device == "cuda":
+            raise RuntimeError("Library cublas64_12.dll is not found")
+        return ""
+
+
+def test_visible_but_unusable_cuda_falls_back_to_cpu_small(monkeypatch):
+    import demo.session_captions as mod
+    import demo.transcription as transcription
+
+    _CudaBrokenTranscriber.built.clear()
+    monkeypatch.setattr(
+        transcription, "FasterWhisperTranscriber", _CudaBrokenTranscriber
+    )
+    transcriber = mod._validated_transcriber(
+        {"model_size": "large-v3", "device": "cuda", "compute_type": "int8"}
+    )
+    assert (transcriber.device, transcriber.model_size) == ("cpu", "small")
+    assert _CudaBrokenTranscriber.built == [("cuda", "large-v3"), ("cpu", "small")]
+
+
+def test_cpu_failure_is_not_swallowed(monkeypatch):
+    import demo.session_captions as mod
+    import demo.transcription as transcription
+
+    class _Broken:
+        def __init__(self, **_):
+            raise RuntimeError("model file corrupt")
+
+    monkeypatch.setattr(transcription, "FasterWhisperTranscriber", _Broken)
+    try:
+        mod._validated_transcriber(
+            {"model_size": "small", "device": "cpu", "compute_type": "int8"}
+        )
+    except RuntimeError as exc:
+        assert "corrupt" in str(exc)
+    else:
+        raise AssertionError("cpu failure was swallowed")
