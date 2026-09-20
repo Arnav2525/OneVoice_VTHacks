@@ -43,6 +43,14 @@ def build_separator(config: dict[str, Any]) -> Any:
     try:
         return create_separator(backend)
     except BackendError as exc:
+        if not backend.get("fallback_on_error", True):
+            logger.error(
+                "could not construct backend %r (%s) and fallback_on_error is "
+                "disabled; refusing to run without real separation.",
+                backend,
+                exc,
+            )
+            raise
         logger.error(
             "could not construct backend %r (%s); using passthrough. "
             "NO REAL SEPARATION will occur.",

@@ -24,14 +24,20 @@ class WebcamSource:
         width: int = 640,
         height: int = 480,
         fps: float = 30.0,
+        io_timeout_ms: float = 1500.0,
+        stop_wait_s: float = 1.0,
     ) -> None:
         self._device_index = device_index
         self._width = width
         self._height = height
         self._fps = fps
+        self._io_timeout_ms = float(io_timeout_ms)
+        self._stop_wait_s = float(stop_wait_s)
         self._capture: Any = None
         self._running = False
         self._lock = threading.Lock()
+        self._reads_idle = threading.Condition(self._lock)
+        self._reads_in_flight = 0
 
     def start(self) -> None:
         if cv2 is None:
@@ -42,26 +48,47 @@ class WebcamSource:
         with self._lock:
             if self._running:
                 return
-            self._capture = cv2.VideoCapture(self._device_index)
-            if not self._capture.isOpened():
+            capture = cv2.VideoCapture(self._device_index)
+            if not capture.isOpened():
+                capture.release()
                 raise RuntimeError(f"Failed to open webcam device {self._device_index}")
-            self._capture.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
-            self._capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
-            self._capture.set(cv2.CAP_PROP_FPS, self._fps)
+            capture.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
+            capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
+            capture.set(cv2.CAP_PROP_FPS, self._fps)
+            for name in ("CAP_PROP_OPEN_TIMEOUT_MSEC", "CAP_PROP_READ_TIMEOUT_MSEC"):
+                prop = getattr(cv2, name, None)
+                if prop is not None:
+                    capture.set(prop, self._io_timeout_ms)
+            self._capture = capture
             self._running = True
 
     def stop(self) -> None:
         with self._lock:
             self._running = False
-            if self._capture is not None:
-                self._capture.release()
-                self._capture = None
+            capture, self._capture = self._capture, None
+            deadline = time.monotonic() + self._stop_wait_s
+            while self._reads_in_flight:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0.0:
+                    break
+                self._reads_idle.wait(timeout=remaining)
+        if capture is not None:
+            capture.release()
 
     def read(self) -> Frame:
-        if not self._running or self._capture is None:
-            raise RuntimeError("WebcamSource is not running")
+        with self._lock:
+            if not self._running or self._capture is None:
+                raise RuntimeError("WebcamSource is not running")
+            capture = self._capture
+            self._reads_in_flight += 1
         capture_start = _now_ms()
-        ok, data = self._capture.read()
+        try:
+            ok, data = capture.read()
+        finally:
+            with self._lock:
+                self._reads_in_flight -= 1
+                if not self._reads_in_flight:
+                    self._reads_idle.notify_all()
         if not ok:
             raise RuntimeError("Webcam frame read failed")
         return Frame(

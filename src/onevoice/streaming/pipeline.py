@@ -91,6 +91,10 @@ class StreamingPipeline:
         self._playback_drops = 0
         self._audio_backpressure_waits = 0
         self._held_frame_pairs = 0
+        self._video_read_failures = 0
+        self._video_reopens = 0
+        self._video_max_read_failures = 30
+        self._video_retry_delay_s = 0.1
         self._start_monotonic = 0.0
         self._threads_total = 0
         self._threads_alive = 0
@@ -153,6 +157,8 @@ class StreamingPipeline:
             "playback_drops": self._playback_drops,
             "audio_backpressure_waits": self._audio_backpressure_waits,
             "held_frame_pairs": self._held_frame_pairs,
+            "video_read_failures": self._video_read_failures,
+            "video_reopens": self._video_reopens,
             "runtime_s": runtime,
             "threads_total": total,
             "threads_alive": alive,
@@ -318,19 +324,51 @@ class StreamingPipeline:
         self._audio_drops += 1
 
     def _video_capture_loop(self) -> None:
+        consecutive_failures = 0
         while not self._stop_event.is_set():
             try:
                 self._latency.record_start("video_capture", _now_ms())
                 frame = self._video_source.read()
                 self._latency.record_end("video_capture", _now_ms())
+                consecutive_failures = 0
                 self._video_queue.put(frame, timeout=0.05)
             except queue.Full:
                 self._video_drops += 1
                 logger.debug("Video capture queue full; dropping frame")
             except Exception:
-                if not self._stop_event.is_set():
-                    logger.exception("Video capture error")
-                break
+                if self._stop_event.is_set():
+                    break
+                consecutive_failures += 1
+                self._video_read_failures += 1
+                if consecutive_failures > self._video_max_read_failures:
+                    logger.exception(
+                        "Video capture failed %d consecutive times; giving up",
+                        consecutive_failures,
+                    )
+                    break
+                logger.warning(
+                    "Video capture read failed (%d/%d); attempting recovery",
+                    consecutive_failures,
+                    self._video_max_read_failures,
+                )
+                if not self._reopen_video_source():
+                    self._stop_event.wait(self._video_retry_delay_s)
+
+    def _reopen_video_source(self) -> bool:
+        stop = getattr(self._video_source, "stop", None)
+        start = getattr(self._video_source, "start", None)
+        if not callable(stop) or not callable(start):
+            return False
+        try:
+            stop()
+            if self._stop_event.wait(self._video_retry_delay_s):
+                return False
+            start()
+        except Exception:
+            logger.warning("Video source reopen failed", exc_info=True)
+            return False
+        self._video_reopens += 1
+        return True
 
     def _sync_feed_loop(self) -> None:
         while not self._stop_event.is_set():

@@ -1,5 +1,7 @@
 
 
+import pytest
+
 from onevoice.separation.passthrough import PassthroughSeparator
 from onevoice.streaming.app import (
     build_pipeline_from_config,
@@ -46,3 +48,11 @@ def test_main_runs_and_stops_cleanly(tmp_path):
         ["--config", str(path), "--duration", "1", "--telemetry-interval", "0.3"]
     )
     assert code == 0
+
+def test_build_separator_raises_when_fallback_disabled():
+    from onevoice.separation.exceptions import BackendError
+
+    with pytest.raises(BackendError):
+        build_separator(
+            {"backend": {"name": "does-not-exist", "fallback_on_error": False}}
+        )

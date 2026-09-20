@@ -178,7 +178,9 @@ def _check_microphone(config: dict[str, Any], live: bool) -> tuple[str, str, Non
         return _WARN, detail + " -- looks silent; check the mic isn't muted", None
     return _PASS, detail, None
 
-def _check_webcam(live: bool) -> tuple[str, str, None]:
+def _check_webcam(
+    live: bool, config: dict[str, Any] | None = None
+) -> tuple[str, str, None]:
     if not live:
         from onevoice.video.capture import MockVideoSource
 
@@ -192,20 +194,25 @@ def _check_webcam(live: bool) -> tuple[str, str, None]:
 
     from onevoice.video.capture import WebcamSource
 
-    source = WebcamSource()
+    video = (config or {}).get("video", {})
+    index = int(video.get("device_index", 0))
+    source = WebcamSource(device_index=index)
     source.start()
     try:
         frame = source.read()
+        for _ in range(9):
+            frame = source.read()
     finally:
         source.stop()
     std = float(np.std(frame.data))
-    detail = f"frame shape={tuple(frame.data.shape)} pixel_std={std:.1f}"
+    detail = f"device_index={index} shape={tuple(frame.data.shape)} pixel_std={std:.1f}"
     if std < 3.0:
-        return (
-            _WARN,
-            detail + " -- frame looks nearly flat; check the lens cap/lighting",
-            None,
+        hint = (
+            " -- frame is flat; open the privacy shutter, check lighting, or pick "
+            "another --camera-index (index 0 is often the NVIDIA Broadcast virtual "
+            "camera, which is black unless NVIDIA Broadcast is running)"
         )
+        return _WARN, detail + hint, None
     return _PASS, detail, None
 
 def _check_pipeline_dry_run(
@@ -296,7 +303,7 @@ def main(argv: list[str] | None = None) -> int:
     _run(report, "face tracker", lambda: _check_face_tracker(config))
     selector = _run(report, "target selector", lambda: _check_target_selector(config))
     _run(report, "microphone", lambda: _check_microphone(config, args.live))
-    _run(report, "webcam", lambda: _check_webcam(args.live))
+    _run(report, "webcam", lambda: _check_webcam(args.live, config))
 
     if separator is not None and selector is not None:
         _run(
