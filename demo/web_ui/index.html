@@ -260,16 +260,8 @@
           <p class="summary-disclosure">Stopping a recording sends its transcript to Gemini.</p>
           <div class="summary-actions">
             <button id="summary-run" class="primary-button" title="Sends this session’s transcript to Google Gemini">Summarize with Gemini</button>
-            <button id="summary-speak" class="text-button" title="Reads the summary aloud with ElevenLabs" disabled>Speak</button>
-            <label class="summary-auto" for="summary-auto">
-              <input id="summary-auto" type="checkbox" autocomplete="off" />
-              Speak automatically
-            </label>
-            <button id="summary-sample" class="text-button">Sample</button>
-            <button id="summary-clear" class="text-button">Clear</button>
           </div>
           <p id="summary-status" role="status" aria-live="polite">Record a conversation to get a summary.</p>
-          <span id="summary-badge" class="summary-badge" hidden></span>
           <p id="summary-text"></p>
           <ul id="summary-points"></ul>
           <div id="explanation-results" hidden>

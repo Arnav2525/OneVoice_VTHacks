@@ -490,10 +490,11 @@ test("the camera stage takes the camera's own aspect ratio so the image fills th
   assert.match(css, /main \{ container-type: inline-size; \}/);
 });
 
-test("the summary panel is a heading, one short disclosure and the controls, with no filler copy", () => {
+test("the summary panel is a heading, one short disclosure and a single Summarize button", () => {
   assert.doesNotMatch(html, /A short recap and key points|AFTER THE CONVERSATION|Live captions use ElevenLabs\. Speech playback/);
   assert.match(html, /<h2 id="summary-heading"[^>]*>Summary<\/h2>/);
   assert.match(html, /Stopping a recording sends its transcript to Gemini\./);
-  assert.match(html, /id="summary-run"[^>]*title="Sends this session/);
-  assert.match(html, /id="summary-speak"[^>]*title="Reads the summary aloud with ElevenLabs"/);
+  assert.match(html, /id="summary-run"[^>]*title="Sends this session[^>]*>Summarize with Gemini</);
+  assert.doesNotMatch(html, /summary-speak|summary-auto|summary-sample|summary-clear|summary-badge/);
+  assert.equal((html.match(/<section id="summary-panel"[\s\S]*?<\/section>/)[0].match(/<button/g) || []).length, 1);
 });

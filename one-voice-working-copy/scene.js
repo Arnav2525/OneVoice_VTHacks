@@ -9,6 +9,7 @@ import { makeWind } from './weather.js';
 import { makeYeti } from './yeti.js';
 import { makeAtmosphere } from './atmosphere.js';
 import {makeSuitcase} from './journey.js';
+import {setLoad, readWithProgress, trackLoadingManager} from './loadprogress.js';
 
 export async function createWorld(canvas, onReady, onPacked) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -34,15 +35,19 @@ export async function createWorld(canvas, onReady, onPacked) {
   const rim = new THREE.DirectionalLight('#b1d1ff', 1.35);
   rim.position.set(5, 3, -8); scene.add(rim);
 
+  setLoad(.03);trackLoadingManager(THREE.DefaultLoadingManager,.05,.38);
+  document.querySelector('#loading-text').textContent='LOADING THE MOUNTAIN LANDSCAPE';
   const alpineTerrain=new THREE.Group();scene.add(alpineTerrain);await makeTerrain(alpineTerrain,renderer);
 
   const haze = new THREE.Mesh(new THREE.PlaneGeometry(240,80),new THREE.MeshBasicMaterial({color:'#b9c4d3',transparent:true,opacity:.12,depthWrite:false}));
   haze.position.set(0,20,-110); scene.add(haze);
   const product=new THREE.Group(); scene.add(product);
   const cradle=new THREE.Group(); product.add(cradle);
+  setLoad(.4);
+  document.querySelector('#loading-text').textContent='BRINGING V5 INTO VIEW';
   const response=await fetch('assets/glasses-v5.ovm');
   if(!response.ok)throw new Error('V5 model is unavailable');
-  const buffer=await response.arrayBuffer(),header=new DataView(buffer);
+  const buffer=await readWithProgress(response,.4,.86),header=new DataView(buffer);
   if(header.getUint32(0,true)!==0x314d564f)throw new Error('Invalid V5 model');
   const vertexCount=header.getUint32(4,true),indexCount=header.getUint32(8,true);
   const geometry=new THREE.BufferGeometry();
@@ -191,12 +196,14 @@ export async function createWorld(canvas, onReady, onPacked) {
   canvas.addEventListener('pointerleave',()=>{pointerX=0;pointerY=0;});
   const release=()=>drag=null;canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
   canvas.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();rotation+=(e.key==='ArrowLeft'?-.25:.25);}if(e.key==='Home'){rotation=0;pitch=0;}});
+  setLoad(.9);
+  document.querySelector('#loading-text').textContent='PREPARING THE FIRST FRAME';
   let compileTimer;
   try {
     await Promise.race([renderer.compileAsync(scene,camera),new Promise(resolve=>{compileTimer=setTimeout(resolve,5000);})]);
   } finally {clearTimeout(compileTimer);}
   composer.render();
-  raf=requestAnimationFrame(render);onReady();
+  raf=requestAnimationFrame(render);setLoad(1);THREE.DefaultLoadingManager.onProgress=undefined;onReady();
   return {travel,setProgress(p){if(travelTime<0)progress=p;},rotate(delta){rotation+=delta;},reset(){rotation=0;pitch=0;},setDetails(value){details=value;},setSunset(value){sunset=value;},greet(){yeti.greet(clock-(paused?.5:0));},setPaused(value){paused=value;},get paused(){return paused;},dispose(){cancelAnimationFrame(raf);renderer.dispose();composer.dispose();}};
 }
 

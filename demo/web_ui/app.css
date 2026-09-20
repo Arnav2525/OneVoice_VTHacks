@@ -1268,10 +1268,6 @@ body[data-synthetic="false"] .target-label {
 .summary-disclosure { font: 11px/1.5 var(--mono); color: #93a7bd; margin: 0 0 4px; }
 #summary-text { font-size: 1.35rem; line-height: 1.5; font-weight: 500; margin: 12px 0; }
 #summary-points { margin: 8px 0 0; padding-left: 22px; line-height: 1.7; font-size: 1.05rem; }
-.summary-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; border: 1px solid #71838c; color: #dbe9ef; }
-.summary-badge[data-status="gemini"] { border-color: #71f0dc; color: #71f0dc; }
-.summary-badge[data-status="scripted"] { border-color: #bdcfe6; color: #d7e6f6; }
-.summary-auto { display: inline-flex; gap: 8px; align-items: center; font: 11px var(--mono); color: #b5c9d3; cursor: pointer; }
 .summary-panel button:disabled { opacity: .45; cursor: not-allowed; }
 
 .camera-wait {
