@@ -1389,3 +1389,13 @@ body.high-contrast .record-status {
 body[data-synthetic="false"] .target-label {
   bottom: 10px;
 }
+.explain-panel { margin: 24px 0; padding: 24px; border-radius: 24px; }
+.explain-panel h2 { margin: 8px 0; font-size: 1.45rem; }
+.explain-panel p { line-height: 1.6; }
+.explain-actions { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 16px 0; }
+.explain-panel textarea { display: block; width: 100%; box-sizing: border-box; margin: 10px 0; padding: 14px; border: 1px solid #71838c; border-radius: 12px; background: #14212c; color: #f0f8fc; font: inherit; resize: vertical; }
+.explain-disclosure, #explain-source { font-size: .85rem; color: #b5c9d3; }
+.explain-image { max-width: 800px; margin-top: 16px; }
+#explain-canvas { display: block; width: 100%; height: auto; border-radius: 16px; }
+#explain-quote { margin: 16px 0; padding-left: 16px; border-left: 2px solid #71f0dc; }
+.explain-panel button:disabled { opacity: .45; cursor: not-allowed; }
