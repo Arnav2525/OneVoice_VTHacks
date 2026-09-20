@@ -1,9 +1,8 @@
-
-
 from __future__ import annotations
 
 import array
 import logging
+import os
 import queue
 import sys
 import threading
@@ -26,15 +25,18 @@ DEFAULT_MONITORED_CLASSES = frozenset(
     {"Siren", "Smoke detector, smoke alarm", "Baby cry, infant cry"}
 )
 
+
 @dataclass(frozen=True)
 class SafetyEvent:
 
     class_name: str
     confidence: float
 
+
 class SafetyClassifier(Protocol):
 
     def classify(self, audio: np.ndarray, sample_rate: int) -> SafetyEvent | None: ...
+
 
 class FakeClassifier:
 
@@ -57,12 +59,20 @@ class FakeClassifier:
     def reset(self) -> None:
         self._done.clear()
 
+
+def _persist_tfhub_cache() -> None:
+
+    os.environ.setdefault("TFHUB_CACHE_DIR", str(REPO_ROOT / "checkpoints" / "tfhub"))
+
+
 class YamnetClassifier:
 
     _MODEL_URL = "https://tfhub.dev/google/yamnet/1"
 
     def __init__(self, monitored_classes: set[str] | None = None) -> None:
         import csv
+
+        _persist_tfhub_cache()
 
         import tensorflow as tf
 
@@ -112,6 +122,7 @@ class YamnetClassifier:
             confidence = float(mean_scores[top_index])
         return SafetyEvent(name, confidence)
 
+
 def _chunk_to_float32(chunk: AudioChunk) -> np.ndarray:
 
     data = chunk.data
@@ -120,6 +131,7 @@ def _chunk_to_float32(chunk: AudioChunk) -> np.ndarray:
     if hasattr(data, "astype"):
         return np.asarray(data, dtype=np.float32).reshape(-1)
     return np.asarray(data, dtype=np.float32).reshape(-1)
+
 
 class SafetyMonitor:
 
@@ -312,18 +324,23 @@ class SafetyMonitor:
             while self._playback and offset < len(output):
                 samples = self._playback.popleft()
                 count = min(len(samples), len(output) - offset)
-                output[offset:offset + count] = samples[:count]
+                output[offset : offset + count] = samples[:count]
                 offset += count
                 self._playback_samples -= count
                 if count < len(samples):
                     self._playback.appendleft(samples[count:])
             metadata = (
-                dict(self._latest_raw_chunk.metadata)
-                if self._latest_raw_chunk else {}
+                dict(self._latest_raw_chunk.metadata) if self._latest_raw_chunk else {}
             )
-        return replace(chunk, data=output.tolist(), metadata={
-            **metadata, "alarm_underrun_samples": len(output) - offset,
-        })
+        return replace(
+            chunk,
+            data=output.tolist(),
+            metadata={
+                **metadata,
+                "alarm_underrun_samples": len(output) - offset,
+            },
+        )
+
 
 class SafetyGatedSink:
 
@@ -344,13 +361,16 @@ class SafetyGatedSink:
         else:
             self._real_sink.write(chunk)
 
+
 DEFAULT_ACTIVATE_THRESH = 0.5
 DEFAULT_RELEASE_HOLD_S = 3.0
 
 YAMNET_SAMPLE_RATE = 16_000
 
+
 def _yamnet_factory(monitored_classes: set[str]) -> SafetyClassifier:
     return YamnetClassifier(monitored_classes=monitored_classes)
+
 
 def build_safety_monitor(
     config: dict[str, Any],
@@ -391,9 +411,7 @@ def build_safety_monitor(
     return SafetyMonitor(
         classifier,
         monitored_classes=monitored,
-        activate_thresh=float(
-            settings.get("activate_thresh", DEFAULT_ACTIVATE_THRESH)
-        ),
+        activate_thresh=float(settings.get("activate_thresh", DEFAULT_ACTIVATE_THRESH)),
         release_hold_s=float(settings.get("release_hold_s", DEFAULT_RELEASE_HOLD_S)),
         sample_rate=sample_rate,
         on_state_change=on_state_change,

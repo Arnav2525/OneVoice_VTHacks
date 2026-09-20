@@ -39,8 +39,14 @@ audio:
     hold_ms: 500.0
     attenuation_db: 35.0
 
+captions:
+
+  device: cpu
+  model_size: small
+  compute_type: int8
+
 video:
-  device_index: 700
+  device_index: 0
   identity_matching: true
   fps: 30.0
   tracker: iou

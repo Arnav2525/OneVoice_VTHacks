@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import array
 import logging
+import os
 import sys
 import threading
 from pathlib import Path
@@ -533,3 +534,26 @@ def test_a_stale_alarm_reason_does_not_leak_into_the_next_session():
     assert runner.close(timeout=5)
 
     assert "alarm" not in runner.state.snapshot().detail.lower()
+
+
+def test_the_yamnet_cache_is_not_left_in_tmp(monkeypatch):
+    """/tmp clears on reboot; a re-download at the venue may never finish."""
+    from demo.safety import _persist_tfhub_cache
+
+    monkeypatch.delenv("TFHUB_CACHE_DIR", raising=False)
+
+    _persist_tfhub_cache()
+
+    cache = Path(os.environ["TFHUB_CACHE_DIR"])
+    assert cache.is_absolute()
+    assert "/tmp" not in str(cache)
+
+
+def test_an_explicit_cache_location_is_respected(monkeypatch):
+    from demo.safety import _persist_tfhub_cache
+
+    monkeypatch.setenv("TFHUB_CACHE_DIR", "/somewhere/chosen")
+
+    _persist_tfhub_cache()
+
+    assert os.environ["TFHUB_CACHE_DIR"] == "/somewhere/chosen"
