@@ -46,6 +46,8 @@ const ui = Object.fromEntries(
     "settings-close",
     "reduce-motion",
     "high-contrast",
+    "camera-source-built-in",
+    "camera-source-external",
     "fullscreen",
     "quit-button",
   ].map((id) => [id, $(id)]),
@@ -237,7 +239,9 @@ function updateTargets() {
       label.className = "target-label";
       label.append(icon("people"), document.createElement("span"));
       button.append(label);
-      button.addEventListener("click", () => action("select", track.track_id));
+      button.addEventListener("click", () =>
+        action("select", { track_id: track.track_id }),
+      );
       targetNodes.set(track.track_id, button);
       ui.targets.append(button);
     }
@@ -446,6 +450,14 @@ function render() {
     commandPending ||
     !session.active ||
     !session.selected_id;
+  const camera = snapshot.camera || { source: "built_in", locked: false };
+  const cameraLocked = !connected || closed || commandPending || camera.locked;
+  for (const source of ["built_in", "external"]) {
+    const button = ui[`camera-source-${source.replace("_", "-")}`];
+    if (!button) continue;
+    button.disabled = cameraLocked;
+    button.setAttribute("aria-pressed", String(camera.source === source));
+  }
 
   const captions = snapshot.captions || {
     enabled: false,
@@ -577,7 +589,7 @@ async function poll() {
   }
 }
 
-async function action(name, trackId) {
+async function action(name, extra = {}) {
   if (!connected || closed || commandPending || !snapshot) return;
   commandPending = true;
   generation += 1;
@@ -590,10 +602,7 @@ async function action(name, trackId) {
     const response = await fetch("/api/action", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OneVoice-UI": "1" },
-      body: JSON.stringify({
-        action: name,
-        ...(trackId ? { track_id: trackId } : {}),
-      }),
+      body: JSON.stringify({ action: name, ...extra }),
       signal: AbortSignal.timeout(3500),
     });
     const data = await response.json();
@@ -751,6 +760,13 @@ ui["session-button"].addEventListener("click", () =>
 ui["record-button"].addEventListener("click", () => action("record"));
 ui["clear-button"].addEventListener("click", () => action("clear"));
 ui["captions-button"].addEventListener("click", () => action("captions"));
+for (const source of ["built_in", "external"]) {
+  const button = ui[`camera-source-${source.replace("_", "-")}`];
+  button?.addEventListener("click", () => {
+    if (button.disabled) return;
+    action("camera", { source });
+  });
+}
 ui["settings-toggle"].addEventListener("click", () =>
   showSettings(ui.settings.hidden),
 );

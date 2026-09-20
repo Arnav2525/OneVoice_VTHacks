@@ -140,6 +140,7 @@ def run(
     open_browser: bool = True,
     port: int = 0,
     camera_index: int | None = None,
+    camera_size: tuple[int, int] | None = None,
     input_device: int | str | None = None,
     output_device: int | str | None = None,
 ) -> int:
@@ -149,6 +150,9 @@ def run(
         if camera_index < 0:
             raise ValueError("Camera index must be zero or greater")
         config.setdefault("video", {})["device_index"] = camera_index
+    if camera_size is not None:
+        width, height = camera_size
+        config.setdefault("video", {}).update(width=width, height=height)
     if input_device is not None:
         config.setdefault("audio", {})["input_device"] = input_device
     if output_device is not None:
@@ -205,6 +209,18 @@ def run(
             )
     return 0 if clean else 1
 
+def _parse_camera_size(text: str) -> tuple[int, int]:
+    parts = text.lower().split("x")
+    try:
+        width, height = (int(part) for part in parts)
+    except ValueError:
+        width = height = 0
+    if len(parts) != 2 or not (160 <= width <= 3840 and 120 <= height <= 2160):
+        raise argparse.ArgumentTypeError(
+            f"{text!r} is not a valid size; use WIDTHxHEIGHT such as 1280x720"
+        )
+    return width, height
+
 def _build_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -251,6 +267,14 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="camera index for this run (external camera is often 1)",
     )
     parser.add_argument(
+        "--camera-size",
+        type=_parse_camera_size,
+        default=None,
+        metavar="WIDTHxHEIGHT",
+        help="capture size for this run, e.g. 1280x720 for a wider 16:9 view "
+        "(default 640x480, which is 4:3 and crops the C270's sides)",
+    )
+    parser.add_argument(
         "--input-device",
         default=None,
         help="microphone name or numeric ID (e.g. C270); 'default' uses the OS default",
@@ -289,6 +313,7 @@ def main(argv: list[str] | None = None) -> int:
         open_browser=not args.no_browser,
         port=args.port,
         camera_index=args.camera_index,
+        camera_size=args.camera_size,
         input_device=args.input_device,
         output_device=args.output_device,
     )

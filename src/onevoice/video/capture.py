@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from typing import Any
 
 from onevoice.core.models.frame import Frame
+
+logger = logging.getLogger(__name__)
 
 try:
     import cv2
@@ -34,6 +37,7 @@ class WebcamSource:
         self._io_timeout_ms = float(io_timeout_ms)
         self._stop_wait_s = float(stop_wait_s)
         self._capture: Any = None
+        self._actual_size = (width, height)
         self._running = False
         self._lock = threading.Lock()
         self._reads_idle = threading.Condition(self._lock)
@@ -55,6 +59,26 @@ class WebcamSource:
             capture.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
             capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
             capture.set(cv2.CAP_PROP_FPS, self._fps)
+            actual_w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+            actual_h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            if actual_w > 0 and actual_h > 0:
+                self._actual_size = (actual_w, actual_h)
+            if (actual_w, actual_h) != (self._width, self._height):
+                logger.warning(
+                    "Webcam %s: asked for %dx%d but the driver gave %dx%d",
+                    self._device_index,
+                    self._width,
+                    self._height,
+                    actual_w,
+                    actual_h,
+                )
+            else:
+                logger.info(
+                    "Webcam %s: capturing at %dx%d",
+                    self._device_index,
+                    actual_w,
+                    actual_h,
+                )
             for name in ("CAP_PROP_OPEN_TIMEOUT_MSEC", "CAP_PROP_READ_TIMEOUT_MSEC"):
                 prop = getattr(cv2, name, None)
                 if prop is not None:
@@ -96,8 +120,8 @@ class WebcamSource:
             data=data,
             metadata={
                 "device_index": self._device_index,
-                "width": self._width,
-                "height": self._height,
+                "width": self._actual_size[0],
+                "height": self._actual_size[1],
             },
         )
 

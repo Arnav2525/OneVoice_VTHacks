@@ -306,6 +306,36 @@
             >Increase contrast<small>Use more opaque glass panels.</small></span
           ><input id="high-contrast" type="checkbox" role="switch"
         /></label>
+        <div class="setting camera-source-setting">
+          <span
+            >Camera source<small id="camera-source-hint"
+              >Which camera OneVoice uses for video.</small
+            ></span
+          >
+          <div
+            id="camera-source"
+            class="segmented"
+            role="group"
+            aria-label="Camera source"
+          >
+            <button
+              id="camera-source-built-in"
+              class="segment"
+              data-source="built_in"
+              aria-pressed="true"
+            >
+              Laptop camera
+            </button>
+            <button
+              id="camera-source-external"
+              class="segment"
+              data-source="external"
+              aria-pressed="false"
+            >
+              External webcam
+            </button>
+          </div>
+        </div>
         <p>Display preferences are saved on this browser.</p>
       </aside>
       <div

@@ -598,7 +598,7 @@ def test_live_build_uses_requested_camera_and_microphone(monkeypatch):
     runner._build()
     microphone.assert_called_once_with(16000, 1, 320, device=6)
     speaker.assert_called_once_with(16000, 1, device=4)
-    camera.assert_called_once_with(device_index=2, fps=30.0)
+    camera.assert_called_once_with(device_index=2, width=640, height=480, fps=30.0)
     microphone.return_value.start.assert_not_called()
     camera.return_value.start.assert_not_called()
 
@@ -775,3 +775,75 @@ def test_async_record_setup_error_remains_visible_without_ending_session(
         assert occupied.read_text() == "keep"
     finally:
         assert runner.close(timeout=5)
+
+
+def test_camera_size_accepts_wxh_in_either_case() -> None:
+    from demo.tap_to_select import _parse_camera_size
+
+    assert _parse_camera_size("1280x720") == (1280, 720)
+    assert _parse_camera_size("1920X1080") == (1920, 1080)
+    assert _parse_camera_size("640x480") == (640, 480)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "1280",
+        "1280x",
+        "x720",
+        "1280x720x30",
+        "1280×720",
+        "0x0",
+        "abc",
+        "10x10",
+        "99999x99999",
+        "-1280x720",
+    ],
+)
+def test_camera_size_rejects_values_that_should_never_reach_a_driver(bad) -> None:
+    import argparse
+
+    from demo.tap_to_select import _parse_camera_size
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_camera_size(bad)
+
+
+def _live_runner(monkeypatch, video_config):
+    from onevoice.audio import io
+    from onevoice.video import capture
+
+    camera = Mock()
+    monkeypatch.setattr(io, "MicrophoneSource", Mock())
+    monkeypatch.setattr(io, "SpeakerSink", Mock())
+    monkeypatch.setattr(capture, "WebcamSource", camera)
+    monkeypatch.setattr(runtime, "build_face_tracker", lambda config: object())
+    monkeypatch.setattr(runtime, "build_separator", lambda config: object())
+    monkeypatch.setattr(runtime, "resolve_audio_device", Mock(side_effect=[0, 0]))
+    runner = runtime.SessionRunner(
+        {"backend": {"name": "test"}, "video": video_config}, live=True
+    )
+    return runner, camera
+
+
+def test_configured_camera_size_reaches_the_webcam(monkeypatch):
+    runner, camera = _live_runner(
+        monkeypatch, {"device_index": 1, "width": 1280, "height": 720}
+    )
+    runner._build()
+    camera.assert_called_once_with(device_index=1, width=1280, height=720, fps=30.0)
+
+
+def test_camera_source_override_beats_config_and_untouched_keeps_it(monkeypatch):
+    runner, camera = _live_runner(monkeypatch, {"device_index": 2})
+    assert runner.camera_source == "external"
+    assert runner.set_camera_source("built_in")
+    assert runner.camera_source == "built_in"
+    runner._build()
+    assert camera.call_args.kwargs["device_index"] == 0
+
+
+def test_unknown_camera_source_is_rejected(monkeypatch):
+    runner, _ = _live_runner(monkeypatch, {})
+    assert not runner.set_camera_source("hdmi")
+    assert runner.camera_source == "built_in"
