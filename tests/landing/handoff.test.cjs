@@ -52,12 +52,33 @@ test("the landing syntax check covers the new About yeti script", () => {
   assert.ok(fs.existsSync(path.join(site, "about-yeti.js")));
 });
 
-test("the one-click launcher starts the story page and the app, preview by default", () => {
-  const launcher = read(repo, "Start OneVoice Experience.cmd");
-  assert.match(launcher, /--port 8771/);
-  assert.match(launcher, /server\.cjs/);
-  assert.match(launcher, /ONEVOICE_MODE=--preview/);
-  assert.match(launcher, /if \/I "%~1"=="live"/);
+test("the launcher runs both servers with no console windows, waits for them, then opens the story page", () => {
+  const ps = read(repo, "scripts", "start_onevoice.ps1");
+  const cmd = read(repo, "Start OneVoice Experience.cmd");
+  const vbs = read(repo, "Start OneVoice Experience.vbs");
+  const stop = read(repo, "scripts", "stop_onevoice.ps1");
+  assert.match(ps, /\$style = if \(\$Visible\) \{ 'Normal' \} else \{ 'Hidden' \}/);
+  assert.equal((ps.match(/-WindowStyle \$style/g) || []).length, 2);
+  assert.match(ps, /'--port', '8771'/);
+  assert.match(ps, /server\.cjs/);
+  assert.match(ps, /RedirectStandardOutput/);
+  assert.match(ps, /ValidateSet\('preview', 'live'\)\]\[string\]\$Mode = 'preview'/);
+  assert.ok(ps.indexOf("Start-Process $storyUrl") > ps.indexOf("$deadline"), "browser opens only after the wait");
+  assert.doesNotMatch(cmd, /start "OneVoice|cmd \/k/);
+  assert.match(cmd, /set "MODE=preview"/);
+  assert.match(cmd, /"%%~A"=="live"/);
+  assert.match(cmd, /start_onevoice\.ps1/);
+  assert.match(vbs, /, 0, False/);
+  assert.match(stop, /8771/);
+  assert.match(stop, /4319/);
+});
+
+test("the CLICK ME button under the yeti is nudged right and kept on screen so the case never covers it", () => {
+  const scene = read(site, "scene.js");
+  assert.match(html, /id="yeti-hello"[^>]*aria-label="Click me to greet the yeti"[^>]*>CLICK ME ↗<\/button>/);
+  assert.doesNotMatch(html, /SAY HELLO/);
+  assert.match(scene, /helloWidth\*\.4/);
+  assert.match(scene, /width-helloWidth\*\.5-16/);
 });
 
 test("About packs the glasses into the case, then opens About with the yeti arriving", () => {
@@ -105,15 +126,27 @@ test("the yeti stays put while the glasses pack: no fly-in and no growing before
   assert.match(scene, /suitcase\.hinge\.rotation\.x/);
 });
 
-test("the loading and retry screen is gone and nothing in the scripts still depends on it", () => {
+test("the loading screen is a full-screen ASCII bar driven by real progress, with no retry screen", () => {
   const scene = read(site, "scene.js");
   const startup = read(site, "startup.js");
   const css = read(site, "style.css");
-  assert.doesNotMatch(html, /id="loading"|loading-text/);
-  assert.doesNotMatch(main, /#loading/);
-  assert.doesNotMatch(scene, /#loading/);
-  assert.doesNotMatch(css, /\.loading/);
-  assert.doesNotMatch(startup, /RETRY LOADING|TAKING LONGER|loading/);
-  assert.match(startup, /import\('\.\/main\.js/);
-  assert.match(main, /world-error/);
+  const serverSource = read(site, "server.cjs");
+  assert.match(html, /<body>\r?\n<div id="loading" class="loading" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">/);
+  assert.match(html, /<span id="loading-lit" class="lit"><\/span><span id="loading-dim" class="dim">-{26}<\/span>/);
+  assert.match(css, /\.loading\{position:fixed;z-index:200;inset:0/);
+  assert.match(css, /\.loading\.done\{opacity:0;visibility:hidden\}/);
+  assert.match(css, /body:has\(#loading:not\(\.done\)\)\{overflow:hidden\}/);
+  assert.match(css, /\.loading-ascii\{font:700 26px/);
+  assert.doesNotMatch(css, /loading-cross|loading-line/);
+  assert.match(scene, /from '\.\/loadprogress\.js'/);
+  assert.match(scene, /trackLoadingManager\(THREE\.DefaultLoadingManager,\.05,\.38\)/);
+  assert.match(scene, /readWithProgress\(response,\.4,\.86\)/);
+  assert.match(scene, /setLoad\(\.9\)/);
+  assert.match(scene, /setLoad\(1\);THREE\.DefaultLoadingManager\.onProgress=undefined;onReady\(\)/);
+  assert.match(serverSource, /'X-Uncompressed-Length':fs\.statSync\(file\)\.size/);
+  assert.match(main, /createWorld\(\$\('#world-canvas'\),\(\)=>\$\('#loading'\)\.classList\.add\('done'\)/);
+  assert.match(main, /sceneFailed=true;\$\('#loading'\)\.classList\.add\('done'\);\$\('#world-error'\)\.hidden=false/);
+  assert.doesNotMatch(startup, /RETRY LOADING|TAKING LONGER|setTimeout|MutationObserver/);
+  assert.match(startup, /getElementById\('loading'\)\?\.classList\.add\('done'\)/);
+  assert.match(read(site, "package.json"), /node --check loadprogress\.js/);
 });

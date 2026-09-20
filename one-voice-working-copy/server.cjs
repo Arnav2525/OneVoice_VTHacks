@@ -14,7 +14,7 @@ const server = http.createServer((req,res) => {
   fs.stat(servedFile,(error,stat)=>{
     if(error||!stat.isFile()){res.writeHead(404);return res.end('Not found');}
     const cacheable=['.ovm','.png','.jpg'].includes(path.extname(file));
-    res.writeHead(200,{'Content-Type':types[path.extname(file)],'Content-Length':stat.size,'Cache-Control':cacheable?'private, max-age=3600':'no-cache','X-Content-Type-Options':'nosniff',...(compressed?{'Content-Encoding':'gzip','Vary':'Accept-Encoding'}:{})});
+    res.writeHead(200,{'Content-Type':types[path.extname(file)],'Content-Length':stat.size,'Cache-Control':cacheable?'private, max-age=3600':'no-cache','X-Content-Type-Options':'nosniff',...(compressed?{'Content-Encoding':'gzip','Vary':'Accept-Encoding','X-Uncompressed-Length':fs.statSync(file).size}:{})});
     if(req.method==='HEAD')return res.end();
     const stream=fs.createReadStream(servedFile);stream.on('error',()=>res.destroy());stream.pipe(res);
   });
