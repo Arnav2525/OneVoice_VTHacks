@@ -34,14 +34,12 @@ export async function createWorld(canvas, onReady, onPacked) {
   const rim = new THREE.DirectionalLight('#b1d1ff', 1.35);
   rim.position.set(5, 3, -8); scene.add(rim);
 
-  document.querySelector('#loading-text').textContent='LOADING THE MOUNTAIN LANDSCAPE';
   const alpineTerrain=new THREE.Group();scene.add(alpineTerrain);await makeTerrain(alpineTerrain,renderer);
 
   const haze = new THREE.Mesh(new THREE.PlaneGeometry(240,80),new THREE.MeshBasicMaterial({color:'#b9c4d3',transparent:true,opacity:.12,depthWrite:false}));
   haze.position.set(0,20,-110); scene.add(haze);
   const product=new THREE.Group(); scene.add(product);
   const cradle=new THREE.Group(); product.add(cradle);
-  document.querySelector('#loading-text').textContent='BRINGING V5 INTO VIEW';
   const response=await fetch('assets/glasses-v5.ovm');
   if(!response.ok)throw new Error('V5 model is unavailable');
   const buffer=await response.arrayBuffer(),header=new DataView(buffer);
@@ -192,7 +190,6 @@ export async function createWorld(canvas, onReady, onPacked) {
   canvas.addEventListener('pointerleave',()=>{pointerX=0;pointerY=0;});
   const release=()=>drag=null;canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
   canvas.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();rotation+=(e.key==='ArrowLeft'?-.25:.25);}if(e.key==='Home'){rotation=0;pitch=0;}});
-  document.querySelector('#loading-text').textContent='PREPARING THE FIRST FRAME';
   let compileTimer;
   try {
     await Promise.race([renderer.compileAsync(scene,camera),new Promise(resolve=>{compileTimer=setTimeout(resolve,5000);})]);
