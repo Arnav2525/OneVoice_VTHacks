@@ -32,6 +32,11 @@ $env:ELEVENLABS_API_KEY = '<your key>'
 python -m demo.tap_to_select --port 8771
 ```
 
+Or copy `.env.example` to `.env` (gitignored) and fill in the keys once; the
+demo and `python -m demo.speech` read it at startup. Variables already set in
+the shell win over the file, and only `ELEVENLABS_`, `GEMINI_` and `ONEVOICE_`
+names are read.
+
 Optional overrides:
 
 | Variable | Default |

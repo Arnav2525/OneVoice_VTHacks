@@ -95,6 +95,9 @@ def play(pcm: bytes, device: int | str | None = None) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from demo.envfile import load_env
+
+    load_env()
     parser = argparse.ArgumentParser(description="Speak text with ElevenLabs.")
     parser.add_argument("text", help="short text to speak")
     parser.add_argument("--output-device", default=None)

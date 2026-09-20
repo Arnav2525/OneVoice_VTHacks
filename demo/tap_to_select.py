@@ -14,9 +14,11 @@ sys.path.insert(0, str(REPO_ROOT))
 import cv2
 
 from demo.devices import format_device_list, list_audio_devices
+from demo.envfile import load_env
 from demo.session_runtime import SessionRunner
 from demo.session_view import face_at, inside, render_session
 from onevoice.streaming.app import load_experiment_config
+
 
 class SessionWindow:
 
@@ -292,6 +294,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     return parser
 
 def main(argv: list[str] | None = None) -> int:
+    load_env()
     parser = _build_argparser()
     args = parser.parse_args(argv)
     if args.list_devices:
