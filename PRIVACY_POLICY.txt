@@ -1,0 +1,444 @@
+================================================================================
+ONE VOICE - PRIVACY POLICY
+================================================================================
+
+Version:        1.0
+Effective date: 19 September 2026
+Last updated:   19 September 2026
+
+Applies to:     the One Voice research prototype - the front-end landing site
+                and the local speech-separation application.
+
+--------------------------------------------------------------------------------
+0. ABOUT THIS DOCUMENT
+--------------------------------------------------------------------------------
+
+One Voice is a student research prototype built for VT Hacks. It is not a
+commercial product, it is not offered as a service, and no one is charged for
+it.
+
+This document is written to be checkable. Every statement about current
+behaviour describes something present in the source code, and the code is
+available for anyone who wants to verify it. Features that are planned but not
+finished are confined to section 13 and labelled as planned. We would rather
+under-claim than describe something that does not exist.
+
+THIS IS NOT LEGAL ADVICE. This policy was written by the project team to
+describe the software honestly. It has not been reviewed by a lawyer and is
+not a substitute for legal advice about your own use of the software,
+particularly regarding recording consent and biometric data in your
+jurisdiction. See sections 6 and 10.
+
+
+--------------------------------------------------------------------------------
+1. THE SHORT VERSION
+--------------------------------------------------------------------------------
+
+  * Speech separation, face tracking and transcription all run on your own
+    computer. There is no One Voice server.
+  * We have no accounts, no analytics, no cookies, no tracking, no ads.
+  * We never receive your audio, video, face data or transcripts.
+  * Camera and microphone open only after you press "Start listening", and
+    stop when you press Stop.
+  * Face matching produces biometric data. It is held in memory only, never
+    written to disk, and discarded when the session ends. See section 6.
+  * A visible on-screen recording indicator is shown the entire time a clip is
+    being recorded. Recording never happens silently.
+  * Nothing is written to disk unless you start a recording.
+  * One planned feature (section 13.4) would send images to a third-party
+    cloud service. It is off by default and requires explicit consent.
+  * One Voice captures other people. Getting their consent is your
+    responsibility, not the software's. See section 10.
+
+
+--------------------------------------------------------------------------------
+2. WHO WE ARE AND HOW TO CONTACT US
+--------------------------------------------------------------------------------
+
+One Voice is built by a four-person student team for VT Hacks 2026:
+
+    Arbaas Shariff Baig  front-end and presentation
+    Arnav Gupta          application and interface
+    Raghavendra Sharma   audio pipeline and separation
+    Shubhankar Nehra     GPU performance and demo hardware
+
+Project repository:  https://github.com/Arnav2525/OneVoice_VTHacks
+Contact:             arbaasb@gmail.com
+
+Because the software processes nothing on our systems, we do not act as a data
+controller for anything you capture with it. You control the device, the
+recordings and the files. If you have a question about this policy or about
+how the software behaves, use the contact above.
+
+
+--------------------------------------------------------------------------------
+3. THE LANDING WEBSITE
+--------------------------------------------------------------------------------
+
+The One Voice website is a static page served from your own machine on
+127.0.0.1 (localhost). It is not published on the internet.
+
+  * It does not request camera or microphone access.
+  * It does not set cookies or use local storage for tracking.
+  * It contains no analytics, tag managers, pixels or third-party scripts.
+  * It makes no network requests. All code and assets, including the 3D
+    library, are bundled locally.
+  * The "Connect One Voice" button opens an on-page dialog. It is a
+    placeholder and sends nothing anywhere.
+
+The cafe comparison shown on the site is a visual illustration, not model
+output, and not a recording of real people made by this software.
+
+
+--------------------------------------------------------------------------------
+4. WHAT THE APPLICATION CAPTURES
+--------------------------------------------------------------------------------
+
+When you start a listening session, the application accesses:
+
+  Camera     Video frames of whoever is in front of the lens, used to detect
+             faces, track them between frames, and read mouth movement to
+             guide separation.
+
+  Microphone Audio from the room, which necessarily includes every voice
+             within range, not only the person you select.
+
+Both open only after an explicit Start action, and both are released when you
+press Stop or close the session. Closing a browser tab alone does not stop
+capture; the session must be stopped.
+
+
+--------------------------------------------------------------------------------
+5. WHERE PROCESSING HAPPENS
+--------------------------------------------------------------------------------
+
+Speech separation, face detection, face matching, noise suppression and
+transcription all run locally, on the laptop the camera and microphone are
+connected to.
+
+No audio, video, images, face data or transcripts are uploaded to any server
+by any feature currently built. The single planned exception is described in
+section 13.4 and is not enabled by default.
+
+
+--------------------------------------------------------------------------------
+6. BIOMETRIC DATA - FACE MATCHING
+--------------------------------------------------------------------------------
+
+This section exists because face matching is the most regulated thing One
+Voice does, and it deserves to be described plainly rather than buried.
+
+WHAT HAPPENS
+
+To keep a speaker's label attached to them when they turn their head or are
+briefly hidden, the application computes a numerical representation of each
+detected face - a face embedding. Depending on jurisdiction, a face embedding
+may be classified as biometric data, biometric identifiers, or special
+category personal data.
+
+HOW IT IS HANDLED
+
+  * Embeddings are held in memory only. They are never written to disk.
+  * They are never transmitted anywhere, and no API receives them.
+  * At most three anonymous profiles exist at a time, labelled "Person 1",
+    "Person 2", "Person 3".
+  * They are discarded when the session ends. Nothing persists between
+    sessions, and the software cannot recognise the same person tomorrow.
+  * There is no face database, no enrolment step and no link to any name,
+    account or identity. The software does not know who anyone is.
+  * No face images or crops are saved.
+
+WHAT THIS MEANS LEGALLY
+
+We are not lawyers and this is not legal advice. But you should be aware that:
+
+  * Illinois' Biometric Information Privacy Act (BIPA) regulates the
+    collection of face geometry and allows individuals to sue directly.
+    Texas (CUBI) and Washington have comparable laws.
+  * Under the EU/UK GDPR, biometric data processed for the purpose of uniquely
+    identifying a person is special category data under Article 9 and requires
+    a specific lawful basis, usually explicit consent.
+  * Several of these regimes turn on notice and consent before collection -
+    not on whether the data was stored afterwards.
+
+One Voice is designed to minimise this exposure: transient, local, anonymous,
+never stored, never transmitted. That is a genuinely strong position, but it is
+not a legal exemption. If you deploy One Voice anywhere other than personal
+experimentation - a workplace, a public venue, a study, a product - take
+proper advice first and obtain informed consent from the people in frame.
+
+
+--------------------------------------------------------------------------------
+7. RECORDING, AND THE RECORDING INDICATOR
+--------------------------------------------------------------------------------
+
+Recording is separate from listening. Running a session records nothing.
+
+While a recording is active, a clearly visible recording indicator is shown on
+screen for the entire duration, together with an elapsed timer. It cannot be
+hidden while recording continues. One Voice does not record silently and is not
+designed to be used covertly.
+
+When you start a recording, the application writes to a folder on your own
+computer:
+
+  * The captured audio for that conversation
+  * The isolated audio that was sent to playback
+  * A small file recording timing and status information for the clip
+
+These files stay on your machine. They are not uploaded and are not shared.
+
+WHAT THE SAVED AUDIO ACTUALLY CONTAINS
+
+The captured track is the room as the microphone heard it, so it may include
+other voices that were audible at the time, not only the person you selected.
+The isolated track contains the selected speaker. Treat a saved recording as a
+recording of the whole situation you were in, and share it accordingly.
+
+
+--------------------------------------------------------------------------------
+8. RETENTION AND DELETION
+--------------------------------------------------------------------------------
+
+  Face embeddings          In memory only. Discarded when the session ends.
+                           Never written to disk.
+
+  Recorded conversations   Kept on your computer until you delete them. The
+                           software never expires or cleans them up, and never
+                           needs them again after the clip finishes.
+
+  Transcripts, summaries   Stored alongside the conversation they belong to,
+  (when built, see 13)     on your machine, and deleted with it.
+
+  Downloaded model files   Cached on your computer so they are not fetched
+                           again. Contain no personal data.
+
+  Anything sent under      Held by the third-party provider under their
+  section 13.4             retention policy, not ours. We cannot retrieve or
+                           delete it.
+
+To remove everything One Voice has stored locally, delete the saved
+conversation folders and the cached model files. Nothing else is written.
+
+
+--------------------------------------------------------------------------------
+9. NETWORK CONNECTIONS
+--------------------------------------------------------------------------------
+
+The application is not fully offline on first run. It downloads model weights
+once and caches them locally:
+
+  * Face detection and face matching models, from the public OpenCV model zoo
+    on GitHub.
+  * A noise-suppression model, from a public GitHub repository.
+  * A speech-separation model, from the Hugging Face model hub.
+
+These are ordinary file downloads. No audio, video or personal data is sent
+with them. As with visiting any website, the hosts serving those files can see
+your IP address and that a download occurred. After the first run the files
+are cached and no further downloads happen.
+
+Apart from these one-time downloads, the application makes no outbound network
+connections unless you explicitly enable the optional cloud feature in 13.4.
+
+
+--------------------------------------------------------------------------------
+10. RECORDING OTHER PEOPLE - PLEASE READ
+--------------------------------------------------------------------------------
+
+This is the part that matters most, and it is not a technical control.
+
+One Voice points a camera and a microphone at people who are not you. It can
+isolate one person's voice from a group, which means it can make an individual
+audible and intelligible in a situation where they would otherwise be lost in
+background noise. That is the entire purpose of the software, and it is also
+its main privacy risk.
+
+  * Tell people when the camera and microphone are on. Do not run a session
+    covertly. The recording indicator exists to support this, not to replace
+    telling someone.
+  * Ask before you record. Recording consent laws differ by country and, in
+    the United States, by state. Some jurisdictions require the consent of
+    every person recorded, not just one.
+  * Do not use One Voice to listen in on conversations you are not part of.
+    The software cannot tell the difference between a conversation you have
+    joined and one you are eavesdropping on. Only you can.
+  * Take particular care with children, patients, clients and anyone who
+    cannot meaningfully consent.
+  * If you share a recording, transcript or summary, remember it contains
+    another person's words.
+
+The software will not enforce any of this for you. It is stated here because
+the responsibility is real and it sits with the person operating the device.
+
+
+--------------------------------------------------------------------------------
+11. SAFETY PASSTHROUGH
+--------------------------------------------------------------------------------
+
+The application includes a local sound classifier intended to let alarms and
+sirens through rather than suppressing them along with other sound. It runs on
+your machine and sends nothing anywhere.
+
+This is a prototype feature and has not been certified or tested to any safety
+standard. Do not rely on One Voice to alert you to an emergency. Do not use it
+in any situation where failing to hear a warning could cause harm, including
+driving, cycling, or moving around live traffic, machinery or construction.
+
+
+--------------------------------------------------------------------------------
+12. CHILDREN
+--------------------------------------------------------------------------------
+
+One Voice is not directed at children and collects no information from anyone,
+including children. It should not be operated by a child unsupervised, both
+because it requires a laptop-class GPU and because operating it responsibly
+means understanding sections 6 and 10.
+
+
+--------------------------------------------------------------------------------
+13. PLANNED FEATURES AND THEIR PRIVACY IMPACT
+--------------------------------------------------------------------------------
+
+The following are in development and may not be present in the version you
+are using. Sections 13.1 to 13.3 keep processing on your machine. Section 13.4
+does not.
+
+If any of these are not shipped, the corresponding section will be removed
+from this policy rather than left describing software that does not exist.
+
+13.1  LIVE TRANSCRIPTION
+
+      Speech-to-text applied to the isolated audio of the person you have
+      selected, shown on screen as the conversation happens.
+
+      Because it runs on the separated stream rather than the raw room audio,
+      the transcript is of the selected speaker, not of everyone nearby.
+
+      The speech-to-text model runs locally. Transcripts are not uploaded. A
+      transcript is still a written record of what another person said: treat
+      it with the same care as a recording, and see section 10 before sharing.
+
+13.2  CONVERSATION SUMMARY
+
+      A short summary of a conversation, generated from the transcript in
+      13.1.
+
+      A summary is derived from another person's words and carries the same
+      obligations as the transcript it came from. Summaries are stored with
+      the conversation they belong to, on your machine, and are deleted when
+      you delete it.
+
+13.3  AUTOMATIC SPEAKER LOCK
+
+      When exactly one person is detected in frame, the application may select
+      that person automatically instead of waiting for you to tap their face.
+
+      This is a convenience, but it means isolation can begin without a
+      deliberate selection. Nothing else changes: the same camera and
+      microphone are already active, the same recording indicator applies, and
+      nothing is saved unless you start a recording. You can always clear the
+      selection manually.
+
+13.4  CLOUD IMAGE UNDERSTANDING  -  DATA LEAVES YOUR DEVICE
+
+      READ THIS SECTION BEFORE ENABLING THE FEATURE.
+
+      This feature lets you capture a still image of what the camera is seeing
+      and send it to a third-party cloud service (Google Gemini) to describe
+      what is in the picture. The purpose is to answer questions a transcript
+      cannot: if someone refers to an object you cannot identify, the image
+      can be described in context.
+
+      Unlike every other feature in this document, this one transmits data off
+      your computer.
+
+      What would be sent:
+        * A still image of the camera view at the moment of capture. This may
+          include the faces of anyone in frame, the room you are in,
+          documents, screens, or anything else visible.
+        * Optionally, accompanying text context.
+
+      What this means:
+        * The image leaves your device and is processed on servers operated by
+          a third party, under that provider's terms and privacy policy, not
+          this one.
+        * We cannot control, retrieve or delete data once it has been sent.
+        * Bystanders in frame have not agreed to this and will usually not
+          know it happened.
+
+      How it is handled:
+        * The feature is OFF by default and must be deliberately enabled.
+        * Enabling it requires explicit confirmation that you understand
+          images will be sent to a third party.
+        * Capture is a deliberate action each time. There is no continuous or
+          background upload of video.
+        * Audio is never sent to this service. It handles still images only.
+        * No API credentials are embedded in the front-end website.
+
+      Our recommendation: do not use this feature with other people in frame
+      unless you have told them and they have agreed. If you only need to
+      identify an object, point the camera at the object rather than at the
+      room.
+
+
+--------------------------------------------------------------------------------
+14. YOUR RIGHTS
+--------------------------------------------------------------------------------
+
+Because we never receive your data, there is nothing for us to disclose,
+correct, export or delete on your behalf. Every file One Voice creates is on
+your own computer, under your own control, and can be deleted by you at any
+time. Deletion instructions are in section 8.
+
+If you are in a jurisdiction granting rights of access, correction, erasure,
+portability or objection, those rights are exercised against whoever holds the
+data. For everything One Voice does locally, that is you.
+
+The exception is anything you chose to send under section 13.4, which is held
+by the third-party provider under their policy. Requests about that data must
+go to them.
+
+
+--------------------------------------------------------------------------------
+15. THIRD-PARTY COMPONENTS
+--------------------------------------------------------------------------------
+
+One Voice is built on open-source components, including Three.js for the
+website, MediaPipe and OpenCV for face detection and matching, and published
+research models for speech separation, noise suppression and speech-to-text.
+Their licences and attributions are listed in the CREDITS and LICENSE files
+distributed with the project.
+
+These components run locally as part of the application. Using One Voice does
+not create any account or relationship with the organisations that publish
+them. The optional cloud service in section 13.4 is the sole exception and
+involves a direct relationship between you and that provider.
+
+
+--------------------------------------------------------------------------------
+16. LIMITATIONS AND HONESTY
+--------------------------------------------------------------------------------
+
+One Voice is a research prototype produced during a hackathon. It is not
+audited, not certified and not production software. It requires a connected
+laptop with a supported GPU and is not a self-contained wearable device.
+Separation quality varies with distance, room acoustics and the number of
+people speaking. Transcripts and summaries are machine-generated and will
+contain errors; do not rely on them as an accurate record of what was said.
+
+No claim is made here that has not been read directly from the source code or
+measured, and planned work is labelled as planned.
+
+
+--------------------------------------------------------------------------------
+17. CHANGES TO THIS POLICY
+--------------------------------------------------------------------------------
+
+This policy will be updated as the features in section 13 ship or are dropped.
+If any part of the system moves off the user's own machine beyond what 13.4
+describes, this policy must be rewritten before that happens, not after.
+
+  Version 1.0  -  19 September 2026  -  first published version.
+
+================================================================================

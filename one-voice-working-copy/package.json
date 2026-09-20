@@ -1,0 +1,10 @@
+{
+  "name": "one-voice-alpine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.cjs",
+    "check": "node --check scene.js && node --check main.js && node --check terrain.js && node --check weather.js && node --check yeti.js && node --check server.cjs && node --check atmosphere.js && node --check startup.js && node --check journey.js && node --check word-particles.js"
+  }
+}
