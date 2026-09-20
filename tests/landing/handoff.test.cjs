@@ -52,12 +52,31 @@ test("the landing syntax check covers the new About yeti script", () => {
   assert.ok(fs.existsSync(path.join(site, "about-yeti.js")));
 });
 
-test("the one-click launcher starts the story page and the app, preview by default", () => {
-  const launcher = read(repo, "Start OneVoice Experience.cmd");
-  assert.match(launcher, /--port 8771/);
-  assert.match(launcher, /server\.cjs/);
-  assert.match(launcher, /ONEVOICE_MODE=--preview/);
-  assert.match(launcher, /if \/I "%~1"=="live"/);
+test("the launcher runs both servers with no console windows, waits for them, then opens the story page", () => {
+  const ps = read(repo, "scripts", "start_onevoice.ps1");
+  const cmd = read(repo, "Start OneVoice Experience.cmd");
+  const vbs = read(repo, "Start OneVoice Experience.vbs");
+  const stop = read(repo, "scripts", "stop_onevoice.ps1");
+  assert.match(ps, /\$style = if \(\$Visible\) \{ 'Normal' \} else \{ 'Hidden' \}/);
+  assert.equal((ps.match(/-WindowStyle \$style/g) || []).length, 2);
+  assert.match(ps, /'--port', '8771'/);
+  assert.match(ps, /server\.cjs/);
+  assert.match(ps, /RedirectStandardOutput/);
+  assert.match(ps, /ValidateSet\('preview', 'live'\)\]\[string\]\$Mode = 'preview'/);
+  assert.ok(ps.indexOf("Start-Process $storyUrl") > ps.indexOf("$deadline"), "browser opens only after the wait");
+  assert.doesNotMatch(cmd, /start "OneVoice|cmd \/k/);
+  assert.match(cmd, /set "MODE=preview"/);
+  assert.match(cmd, /"%%~A"=="live"/);
+  assert.match(cmd, /start_onevoice\.ps1/);
+  assert.match(vbs, /, 0, False/);
+  assert.match(stop, /8771/);
+  assert.match(stop, /4319/);
+});
+
+test("the SAY HELLO button is nudged right of the yeti and kept on screen so the case never covers it", () => {
+  const scene = read(site, "scene.js");
+  assert.match(scene, /helloWidth\*\.4/);
+  assert.match(scene, /width-helloWidth\*\.5-16/);
 });
 
 test("About packs the glasses into the case, then opens About with the yeti arriving", () => {

@@ -1,2 +1,2 @@
 @echo off
-call "%~dp0..\Start OneVoice Experience.cmd" %*
+wscript "%~dp0..\Start OneVoice Experience.vbs" %*

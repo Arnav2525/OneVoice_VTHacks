@@ -174,7 +174,8 @@ export async function createWorld(canvas, onReady, onPacked) {
     yeti.update(clock,parallaxX);
     yeti.root.visible=!mobile&&p<3.6;
     pin.copy(yeti.root.position);pin.y-=.2;pin.project(camera);hello.hidden=!yeti.root.visible||p>.6;
-    hello.style.left=`${(pin.x*.5+.5)*width}px`;hello.style.top=`${(-pin.y*.5+.5)*height}px`;
+    const helloWidth=hello.offsetWidth||120;
+    hello.style.left=`${Math.min((pin.x*.5+.5)*width+helloWidth*.4,width-helloWidth*.5-16)}px`;hello.style.top=`${(-pin.y*.5+.5)*height}px`;
     detailButtons.forEach((button,i)=>{button.hidden=travelTime>=0||!details||p>3.6||(i===2&&p<2.35);pin.copy(detailPositions[i]);product.localToWorld(pin);pin.project(camera);button.style.left=`${(pin.x*.5+.5)*width}px`;button.style.top=`${(-pin.y*.5+.5)*height}px`;});
     earbuds.visible=p>2.35; snowMat.uniforms.time.value=clock;
     projected.set(p<1.6?-.36:1.65,p<1.6?.82:0,p<1.6?2.63:-1.3);product.localToWorld(projected);projected.project(camera);
