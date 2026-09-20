@@ -162,6 +162,16 @@ test("late state response after Quit cannot restore hearing or output levels", a
   assert.equal(h.timers.size, 0);
 });
 
+test("story handoff opens the camera-off stage without starting devices", async () => {
+  const h = harness();
+  await h.boot(payload("ready"));
+  assert.equal(h.get("camera-view").hidden, false);
+  assert.equal(h.get("video-surface").hidden, true);
+  assert.equal(h.get("camera-wait").hidden, false);
+  assert.match(h.get("camera-wait-text").textContent, /Camera is off/);
+  assert.equal(h.requests.filter((request) => request.url === "/api/action").length, 0);
+});
+
 test("face matching explains the three-person limit and clears its hint on Stop", async () => {
   const h = harness();
   const identity = { enabled: true, registered: 3, capacity: 3, unmatched: 1, error: false };
