@@ -1,0 +1,49 @@
+.connect-iris {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  background: #14100c;
+  clip-path: circle(0% at 50% 50%);
+  animation: connect-iris 0.9s cubic-bezier(0.6, 0, 0.2, 1) forwards;
+  pointer-events: all;
+}
+@keyframes connect-iris {
+  to {
+    clip-path: circle(150% at 50% 50%);
+  }
+}
+#connection-help {
+  margin: 22px 0 6px;
+  padding: 18px 20px;
+  border: 1px solid #bdcfe355;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #c9d6e6;
+}
+#connection-help code {
+  display: block;
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  background: #0b121b;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+#connection-retry {
+  border: 1px solid #dbe7f488;
+  background: none;
+  color: inherit;
+  padding: 12px 18px;
+  font: inherit;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+#connection-retry:hover {
+  background: #eaf1fa;
+  color: #182132;
+}
+@media (prefers-reduced-motion: reduce) {
+  .connect-iris {
+    animation: none;
+    clip-path: none;
+  }
+}

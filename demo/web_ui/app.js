@@ -7,10 +7,10 @@ const ui = Object.fromEntries(
     "connection-label",
     "mode-label",
     "mode-context",
-    "welcome",
     "camera-view",
     "camera-frame",
     "camera-wait",
+    "camera-wait-text",
     "video-surface",
     "sample-scene",
     "sample-people",
@@ -333,11 +333,17 @@ function render() {
       ? "Isolation off"
       : "One voice at a time";
 
-  ui.welcome.hidden = phase !== "ready";
-  ui["camera-view"].hidden = !session.active;
+  const cameraOff = !session.active;
+  ui["camera-view"].hidden = false;
+  ui["video-surface"].hidden = cameraOff;
   ui["sample-scene"].hidden = !synthetic;
-  ui["scene-notice"].hidden = !synthetic;
-  ui["camera-wait"].hidden = synthetic || frameFresh();
+  ui["scene-notice"].hidden = !synthetic || cameraOff;
+  ui["camera-wait"].hidden = cameraOff ? false : synthetic || frameFresh();
+  ui["camera-wait-text"].textContent = cameraOff
+    ? phase === "ready"
+      ? "Camera is off. Press Start listening."
+      : "Camera is off."
+    : "Waiting for camera…";
   ui["camera-frame"].hidden = synthetic || !frameFresh();
   ui["focus-card"].hidden = phase === "ready";
   ui["phase-label"].textContent =
@@ -826,3 +832,12 @@ window.addEventListener("pageshow", (event) => {
 preferences();
 poll();
 frames();
+
+if (
+  typeof location !== "undefined" &&
+  new URLSearchParams(location.search).get("from") === "story"
+) {
+  document.body.classList.add("from-story");
+  setTimeout(() => document.body.classList.remove("from-story"), 1600);
+  history.replaceState(null, "", location.pathname);
+}
