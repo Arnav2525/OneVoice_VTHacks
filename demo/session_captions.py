@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections import deque
 from collections.abc import Callable
 from typing import Any
 
 from demo.session_state import SessionState
 
 logger = logging.getLogger(__name__)
+
+MAX_TRANSCRIPT_LINES = 300
 
 
 def _cuda_visible() -> bool:
@@ -100,6 +103,7 @@ class SessionCaptions:
         self._sink: Any = None
         self._sink_epoch: int | None = None
         self._current: dict[str, Any] | None = None
+        self._lines: deque[tuple[str, str]] = deque(maxlen=MAX_TRANSCRIPT_LINES)
         self._load_thread: threading.Thread | None = None
 
     @property
@@ -203,12 +207,31 @@ class SessionCaptions:
         requested, current_epoch = self._state.selection()
         if requested is None or segment_epoch != current_epoch:
             return
+        speaker = self._state.person_name(requested)
         with self._lock:
             self._current = {
                 "track_id": requested,
                 "text": text,
                 "timestamp_ms": timestamp_ms,
             }
+            if text.strip():
+                self._lines.append((speaker, text.strip()))
+
+    def transcript_text(self, max_chars: int = 12_000) -> str:
+        with self._lock:
+            lines = [f"{speaker}: {text}" for speaker, text in self._lines]
+        kept: list[str] = []
+        total = 0
+        for line in reversed(lines):
+            total += len(line) + 1
+            if total > max_chars:
+                break
+            kept.append(line)
+        return "\n".join(reversed(kept))
+
+    def clear_transcript(self) -> None:
+        with self._lock:
+            self._lines.clear()
 
     def snapshot(self) -> dict[str, Any]:
         requested, _ = self._state.selection()
@@ -227,6 +250,7 @@ class SessionCaptions:
 
         with self._lock:
             self._enabled = False
+            self._lines.clear()
             self._retire_sink_locked()
             transcriber = self._transcriber
             self._transcriber = None

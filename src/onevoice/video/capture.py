@@ -59,26 +59,27 @@ class WebcamSource:
             capture.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
             capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
             capture.set(cv2.CAP_PROP_FPS, self._fps)
-            actual_w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-            actual_h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            getter = getattr(capture, "get", None)
+            actual_w = int(getter(cv2.CAP_PROP_FRAME_WIDTH)) if getter else 0
+            actual_h = int(getter(cv2.CAP_PROP_FRAME_HEIGHT)) if getter else 0
             if actual_w > 0 and actual_h > 0:
                 self._actual_size = (actual_w, actual_h)
-            if (actual_w, actual_h) != (self._width, self._height):
-                logger.warning(
-                    "Webcam %s: asked for %dx%d but the driver gave %dx%d",
-                    self._device_index,
-                    self._width,
-                    self._height,
-                    actual_w,
-                    actual_h,
-                )
-            else:
-                logger.info(
-                    "Webcam %s: capturing at %dx%d",
-                    self._device_index,
-                    actual_w,
-                    actual_h,
-                )
+                if (actual_w, actual_h) != (self._width, self._height):
+                    logger.warning(
+                        "Webcam %s: asked for %dx%d but the driver gave %dx%d",
+                        self._device_index,
+                        self._width,
+                        self._height,
+                        actual_w,
+                        actual_h,
+                    )
+                else:
+                    logger.info(
+                        "Webcam %s: capturing at %dx%d",
+                        self._device_index,
+                        actual_w,
+                        actual_h,
+                    )
             for name in ("CAP_PROP_OPEN_TIMEOUT_MSEC", "CAP_PROP_READ_TIMEOUT_MSEC"):
                 prop = getattr(cv2, name, None)
                 if prop is not None:
