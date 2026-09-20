@@ -148,7 +148,7 @@ export async function createWorld(canvas, onReady, onPacked) {
       product.scale.multiplyScalar(1-.15*Math.sin(Math.min(t/6,1)*Math.PI));
       product.rotation.y+=Math.sin(Math.min(t/6,1)*Math.PI)*.35;
       product.visible=t<2.55;
-      travelStatus.textContent=t<2.6?'PACKING THE GLASSES':'THE YETI IS SHOWING YOU THE STORY';
+      travelStatus.textContent=t<2.6?'PACKING THE GLASSES':'OPENING ABOUT';
       if(t>3.7){travelTime=-1;onPacked();}
     }
     parallaxX+=(pointerX-parallaxX)*(1-Math.exp(-dt*3));parallaxY+=(pointerY-parallaxY)*(1-Math.exp(-dt*3));
@@ -174,7 +174,6 @@ export async function createWorld(canvas, onReady, onPacked) {
     atmosphere.update(clock,warmth);
     wind.update(clock,.7+Math.sin(portalProgress*Math.PI)*1.15);
     yeti.update(clock,parallaxX);
-    if(travelTime>=0){const approach=THREE.MathUtils.smoothstep(travelTime,1.7,3.55);yeti.root.position.set(THREE.MathUtils.lerp(7,2.5,approach),THREE.MathUtils.lerp(elevation(7,-10)-.08,-1.35,approach),THREE.MathUtils.lerp(-10,1.5,approach));yeti.root.rotation.y=THREE.MathUtils.lerp(-.24,-.55,approach);yeti.root.scale.setScalar(1.25+approach*.2);}
     yeti.root.visible=!mobile&&p<3.6;
     pin.copy(yeti.root.position);pin.y-=.2;pin.project(camera);hello.hidden=!yeti.root.visible||p>.6;
     hello.style.left=`${(pin.x*.5+.5)*width}px`;hello.style.top=`${(-pin.y*.5+.5)*height}px`;

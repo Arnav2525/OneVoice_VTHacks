@@ -95,3 +95,11 @@ test("no intermediate screen sits between the lens zoom and the app, and the for
   assert.match(css, /\.world #conversation \.cafe\{display:none\}/);
 });
 
+test("the yeti stays put while the glasses pack: no fly-in and no growing before About opens", () => {
+  const scene = read(site, "scene.js");
+  assert.doesNotMatch(scene, /yeti\.root\.scale\.setScalar\(1\.25\+approach/);
+  assert.doesNotMatch(scene, /travelTime>=0\)\{const approach/);
+  assert.doesNotMatch(scene, /YETI IS SHOWING YOU/);
+  assert.match(scene, /yeti\.root\.scale\.setScalar\(1\.25\)/);
+  assert.match(scene, /suitcase\.hinge\.rotation\.x/);
+});
