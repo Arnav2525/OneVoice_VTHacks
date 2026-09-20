@@ -34,6 +34,17 @@ video:
 selection:
   mode: first_track
 
+safety:
+
+  enabled: true
+  activate_thresh: 0.5
+
+  release_hold_s: 3.0
+  monitored_classes:
+    - Siren
+    - Smoke detector, smoke alarm
+    - Baby cry, infant cry
+
 targets:
   end_to_end_latency_ms_max: 1000.0
   si_snr_improvement_db_min: 7.0

@@ -9,12 +9,17 @@ from pathlib import Path
 from typing import Any
 
 from demo.devices import resolve_audio_device
+from demo.safety import build_safety_monitor
 from demo.session_captions import SessionCaptions, build_transcriber_factory
 from demo.session_recording import SessionRecorder
 from demo.session_state import SessionState
 from demo.tap_selection import TrackObservingSelector
 from onevoice.audio.cleanup import RumbleFilter
-from onevoice.audio.io import MockAudioSink, MockAudioSource
+from onevoice.audio.io import (
+    MockAudioSink,
+    MockAudioSource,
+    RecordingAudioSource,
+)
 from onevoice.core.models.speaker_track import SpeakerTrack
 from onevoice.core.models.target_selection import TargetSelection
 from onevoice.streaming.app import build_face_tracker, build_separator
@@ -135,11 +140,14 @@ class SessionSink:
         captions: SessionCaptions,
         cleanup: RumbleFilter | None = None,
         denoiser: Any = None,
+        *,
+        safety: Any = None,
     ) -> None:
         self.sink, self.state = sink, state
         self.separator, self.recorder, self.captions = separator, recorder, captions
         self.cleanup = cleanup
         self.denoiser = denoiser
+        self.safety = safety
         self._was_allowed = False
         self._fade_samples = 128
 
@@ -154,8 +162,40 @@ class SessionSink:
     def stop(self) -> None:
         self.sink.stop()
 
+    def _write_alarm(self, chunk: Any, status: dict[str, Any]) -> None:
+
+        raw = self.safety.latest_raw_chunk() or chunk
+        data = [float(value) for value in raw.data]
+        if not self._was_allowed:
+
+            data = _ramp(data, rising=True, length=self._fade_samples)
+        delivered = replace(
+            raw,
+            data=data,
+            metadata={
+                **raw.metadata,
+                "safety_override": True,
+                "output_ready": True,
+            },
+        )
+        self._was_allowed = True
+
+        for processor in (self.cleanup, self.denoiser):
+            if processor is not None:
+                processor.reset()
+        self.sink.write(delivered)
+
+        self.state.observe_output(delivered, status)
+        self.recorder.on_output(delivered)
+
+        self.captions.on_output(chunk, False)
+
     def write(self, chunk: Any) -> None:
         status = self.separator.get_status()
+        if self.safety is not None and self.safety.is_active():
+
+            self._write_alarm(chunk, status)
+            return
         allowed = (
             self.state.output_allowed(chunk)
             and status.get("is_real_separation") is True
@@ -242,6 +282,9 @@ class SessionRunner:
         self._separator: Any = None
         self._identity_tracker: Any = None
         self._recording_cleanup_pending = False
+        self._safety: Any = None
+        self._alarm_name = "alarm"
+        self._stop_reason: str | None = None
 
     @property
     def busy(self) -> bool:
@@ -257,6 +300,8 @@ class SessionRunner:
             else:
                 self.state.begin_start()
             self._cancel.clear()
+
+            self._stop_reason = None
             self._launch_worker(start_session=True)
 
     def stop(self) -> None:
@@ -305,6 +350,28 @@ class SessionRunner:
     def identity_status(self) -> dict[str, Any]:
         tracker = self._identity_tracker
         return tracker.status() if tracker is not None else {}
+
+    def _on_safety_change(self, active: bool, event: Any = None) -> None:
+
+        if active:
+            self._alarm_name = getattr(event, "class_name", None) or "alarm"
+            logger.warning(
+                "ALARM DETECTED (%s): isolation suspended, passing room audio "
+                "through so it can be heard.",
+                self._alarm_name,
+            )
+            return
+
+        logger.warning(
+            "Alarm cleared (%s): stopping the session. Start listening again "
+            "when it is safe.",
+            self._alarm_name,
+        )
+        self._stop_reason = (
+            f"Stopped for safety: alarm detected ({self._alarm_name}). "
+            "Start listening again when it is safe."
+        )
+        self.stop()
 
     def _on_frame(self, frame: Any) -> None:
         self.state.observe_frame(frame)
@@ -487,9 +554,27 @@ class SessionRunner:
             if not model_path.is_absolute():
                 model_path = Path(__file__).resolve().parents[1] / model_path
             denoiser = GtcrnDenoiser(model_path=model_path)
+        self._safety = None
+        if self.preview:
+
+            logger.info(
+                "Preview mode plays no audio, so alarm passthrough is inactive."
+            )
+        else:
+            self.state.starting_detail("Preparing alarm detection...")
+            self._safety = build_safety_monitor(
+                config,
+                sample_rate=rate,
+                on_state_change=self._on_safety_change,
+            )
+
+        source: Any = raw
+        if self._safety is not None:
+
+            source = RecordingAudioSource(raw, self._safety)
         separator = EpochSeparator(build_separator(config), self.state)
         pipeline = StreamingPipeline(
-            audio_source=ObservedSource(raw, self._on_input),
+            audio_source=ObservedSource(source, self._on_input),
             audio_sink=SessionSink(
                 sink,
                 self.state,
@@ -498,6 +583,7 @@ class SessionRunner:
                 self.captions,
                 cleanup,
                 denoiser,
+                safety=self._safety,
             ),
             video_source=ObservedSource(video, self._on_frame),
             face_tracker=tracker,
@@ -547,7 +633,8 @@ class SessionRunner:
     def _finish_session(self, error: str | None) -> None:
         with self._frame_lock:
             self._frame = None
-        self.state.mark_stopped(error)
+        self.state.mark_stopped(error, detail=self._stop_reason)
+        self._stop_reason = None
 
     def _run(self, start_session: bool = True) -> None:
         if self._cleanup_pending():

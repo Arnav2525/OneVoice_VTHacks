@@ -265,3 +265,58 @@ class SafetyGatedSink:
             self._real_sink.write(override if override is not None else chunk)
         else:
             self._real_sink.write(chunk)
+
+DEFAULT_ACTIVATE_THRESH = 0.5
+DEFAULT_RELEASE_HOLD_S = 3.0
+
+YAMNET_SAMPLE_RATE = 16_000
+
+def _yamnet_factory(monitored_classes: set[str]) -> SafetyClassifier:
+    return YamnetClassifier(monitored_classes=monitored_classes)
+
+def build_safety_monitor(
+    config: dict[str, Any],
+    sample_rate: int,
+    on_state_change: Callable[[bool, SafetyEvent | None], None] | None = None,
+    classifier_factory: Callable[[set[str]], SafetyClassifier] | None = None,
+) -> SafetyMonitor | None:
+
+    settings = config.get("safety") or {}
+    if not settings.get("enabled", True):
+        logger.info("Alarm passthrough is switched off in this config.")
+        return None
+
+    if sample_rate != YAMNET_SAMPLE_RATE:
+        logger.warning(
+            "ALARM PASSTHROUGH DISABLED: the detector needs %d Hz audio but this "
+            "session runs at %d Hz. A fire alarm will NOT interrupt isolation.",
+            YAMNET_SAMPLE_RATE,
+            sample_rate,
+        )
+        return None
+
+    requested = settings.get("monitored_classes")
+    monitored = set(requested) if requested else set(DEFAULT_MONITORED_CLASSES)
+
+    factory = classifier_factory or _yamnet_factory
+    try:
+        classifier = factory(monitored)
+    except Exception:  # noqa: BLE001 - safety must never block a session from starting
+        logger.warning(
+            "ALARM PASSTHROUGH DISABLED: could not load the alarm detector "
+            "(install the 'safety' extra: pip install -e '.[safety]'). The session "
+            "will run normally, but a fire alarm will NOT interrupt isolation.",
+            exc_info=True,
+        )
+        return None
+
+    return SafetyMonitor(
+        classifier,
+        monitored_classes=monitored,
+        activate_thresh=float(
+            settings.get("activate_thresh", DEFAULT_ACTIVATE_THRESH)
+        ),
+        release_hold_s=float(settings.get("release_hold_s", DEFAULT_RELEASE_HOLD_S)),
+        sample_rate=sample_rate,
+        on_state_change=on_state_change,
+    )

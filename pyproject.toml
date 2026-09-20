@@ -70,6 +70,11 @@ transcription = [
     "numpy>=1.24",
     "faster-whisper>=1.0",
 ]
+safety = [
+    "numpy>=1.24",
+    "tensorflow>=2.13",
+    "tensorflow-hub>=0.14",
+]
 look_once_to_hear = [
     "numpy>=1.24",
     "torch>=2.0",
@@ -130,6 +135,7 @@ lint.ignore = []
 "tests/demo/test_safety.py" = ["E402"]
 "demo/safety_demo.py" = ["E402"]
 "tests/demo/test_safety_demo.py" = ["E402"]
+"tests/demo/test_session_safety.py" = ["E402"]
 
 [tool.black]
 line-length = 88
