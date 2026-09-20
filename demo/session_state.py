@@ -91,11 +91,11 @@ class SessionState:
                 self._epoch += 1
                 self._output_ready = False
 
-    def mark_stopped(self, error: str | None = None) -> None:
+    def mark_stopped(self, error: str | None = None, detail: str | None = None) -> None:
         with self._lock:
             self._reset()
             self._phase = "error" if error else "stopped"
-            self._detail = error or "Camera and microphone released."
+            self._detail = error or detail or "Camera and microphone released."
 
     def observe_input(self, chunk: Any) -> None:
         with self._lock:
