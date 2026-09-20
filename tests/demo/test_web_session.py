@@ -1,7 +1,6 @@
-
-
 from __future__ import annotations
 
+import base64
 import http.client
 import json
 import sys
@@ -24,6 +23,7 @@ from demo.web_session import MAX_BODY_BYTES, SessionHTTPServer  # noqa: E402
 from onevoice.core.models.audio_chunk import AudioChunk  # noqa: E402
 from onevoice.core.models.frame import Frame  # noqa: E402
 from onevoice.core.models.speaker_track import SpeakerTrack  # noqa: E402
+
 
 class FakeRunner:
     def __init__(self):
@@ -72,6 +72,7 @@ class FakeRunner:
         self.closed.set()
         return True
 
+
 @pytest.fixture
 def local_server(tmp_path):
     (tmp_path / "index.html").write_text("<html>Local UI</html>", encoding="utf-8")
@@ -89,6 +90,7 @@ def local_server(tmp_path):
         server.server_close()
         runner.close()
 
+
 def request(server, path, *, method="GET", body=None, headers=None):
     connection = http.client.HTTPConnection(*server.server_address, timeout=3)
     connection.request(method, path, body=body, headers=headers or {})
@@ -96,6 +98,7 @@ def request(server, path, *, method="GET", body=None, headers=None):
     result = response.status, dict(response.getheaders()), response.read()
     connection.close()
     return result
+
 
 def action(server, payload, **kwargs):
     return request(
@@ -110,6 +113,7 @@ def action(server, payload, **kwargs):
             **kwargs,
         },
     )
+
 
 def test_read_only_page_and_state_never_start_capture(local_server):
     server, runner = local_server
@@ -129,6 +133,7 @@ def test_read_only_page_and_state_never_start_capture(local_server):
     assert state["server_time_ms"] > 0
     assert runner.starts == 0
     assert request(server, "/api/frame")[0] == 204
+
 
 def test_start_select_clear_record_stop_use_existing_runner(local_server):
     server, runner = local_server
@@ -155,6 +160,7 @@ def test_start_select_clear_record_stop_use_existing_runner(local_server):
     assert runner.stops == 1
     assert runner.state.snapshot().phase == "stopped"
 
+
 def test_captions_default_to_off_when_runner_has_no_captions_support(local_server):
     server, _ = local_server
     state = json.loads(request(server, "/api/state")[2])
@@ -164,6 +170,7 @@ def test_captions_default_to_off_when_runner_has_no_captions_support(local_serve
         "error": None,
         "current": None,
     }
+
 
 def test_captions_snapshot_passes_through_when_runner_supports_it(local_server):
     server, runner = local_server
@@ -179,6 +186,7 @@ def test_captions_snapshot_passes_through_when_runner_supports_it(local_server):
     assert state["captions"]["enabled"] is True
     assert state["captions"]["current"]["track_id"] == "a"
 
+
 @pytest.mark.parametrize("track_id", ["unknown", "c"])
 def test_selection_rejects_disappeared_or_coasting_tracks(local_server, track_id):
     server, runner = local_server
@@ -186,12 +194,14 @@ def test_selection_rejects_disappeared_or_coasting_tracks(local_server, track_id
     assert action(server, {"action": "select", "track_id": track_id})[0] == 409
     assert runner.state.selection()[0] is None
 
+
 def test_cannot_select_before_start_or_after_stop(local_server):
     server, _ = local_server
     assert action(server, {"action": "select", "track_id": "a"})[0] == 409
     action(server, {"action": "start"})
     action(server, {"action": "stop"})
     assert action(server, {"action": "select", "track_id": "a"})[0] == 409
+
 
 @pytest.mark.parametrize(
     "headers",
@@ -207,6 +217,7 @@ def test_other_origins_and_rebinding_hosts_cannot_read_state(local_server, heade
     assert request(server, "/api/state", headers=headers)[0] == 403
     assert action(server, {"action": "start"}, **headers)[0] == 403
     assert runner.starts == 0
+
 
 def test_missing_custom_header_and_preflight_cannot_start(local_server):
     server, runner = local_server
@@ -229,6 +240,7 @@ def test_missing_custom_header_and_preflight_cannot_start(local_server):
     assert status >= 400
     assert "Access-Control-Allow-Origin" not in headers
     assert runner.starts == 0
+
 
 @pytest.mark.parametrize(
     ("body", "content_type", "expected"),
@@ -255,6 +267,7 @@ def test_mutations_require_small_json_objects(
     )
     assert runner.starts == 0
 
+
 @pytest.mark.parametrize(
     "payload",
     [
@@ -270,12 +283,14 @@ def test_invalid_action_payloads_do_not_mutate(local_server, payload):
     assert action(server, payload)[0] == 400
     assert runner.starts == 0
 
+
 @pytest.mark.parametrize("path", ["/../session_runtime.py", "/%2e%2e/secret", "/test"])
 def test_static_whitelist_never_serves_other_files(local_server, path):
     server, _ = local_server
     assert request(server, path)[0] == 404
     assert request(server, "/app.css?v=1")[0] == 200
     assert request(server, "/app.js")[0] == 200
+
 
 def test_frame_only_returns_real_active_pixels_and_stops_with_session(local_server):
     import cv2
@@ -300,6 +315,7 @@ def test_frame_only_returns_real_active_pixels_and_stops_with_session(local_serv
     assert frame["width"] == 32 and frame["height"] == 24
     runner.stop()
     assert request(server, "/api/frame")[0] == 204
+
 
 def test_frame_header_matches_encoded_image_when_capture_advances(
     local_server, monkeypatch
@@ -332,6 +348,7 @@ def test_frame_header_matches_encoded_image_when_capture_advances(
         == headers["X-Frame-Timestamp-Ms"]
     )
 
+
 @pytest.mark.parametrize("phase", ["stopping", "interrupted"])
 def test_stopping_or_interrupted_capture_has_no_available_frame(local_server, phase):
     server, runner = local_server
@@ -351,6 +368,7 @@ def test_stopping_or_interrupted_capture_has_no_available_frame(local_server, ph
     assert status == 204 and not image
     assert "X-Frame-Timestamp-Ms" not in headers
 
+
 def test_recording_paths_serialize_as_strings(local_server, tmp_path):
     server, runner = local_server
     clip = tmp_path / "clip"
@@ -358,6 +376,7 @@ def test_recording_paths_serialize_as_strings(local_server, tmp_path):
     state = json.loads(request(server, "/api/state")[2])
     assert state["recording"]["path"] == str(clip)
     assert state["recording"]["elapsed_s"] == 1.2
+
 
 def test_quit_acknowledges_and_releases_runner_off_request_thread(local_server):
     server, runner = local_server
@@ -373,3 +392,75 @@ def test_quit_acknowledges_and_releases_runner_off_request_thread(local_server):
     assert runner.closed.wait(timeout=3)
     assert server.closing
     assert runner.state.snapshot().phase == "stopped"
+
+
+def _post(server, path, payload, **extra):
+    return request(
+        server,
+        path,
+        method="POST",
+        body=json.dumps(payload),
+        headers={
+            "Content-Type": "application/json",
+            "X-OneVoice-UI": "1",
+            "Origin": server.origin,
+            **extra,
+        },
+    )
+
+
+def test_explain_endpoint_is_same_origin_and_does_not_start_capture(
+    local_server, monkeypatch
+):
+    server, runner = local_server
+    provider = Mock(
+        return_value={"status": "not_found", "explanation": "No match", "objects": []}
+    )
+    monkeypatch.setattr("demo.visual_explain.explain", provider)
+    payload = {"image": "test", "utterance": "a cable"}
+    status, _, _ = _post(
+        server, "/api/explain", payload, Origin="https://other.example"
+    )
+    assert status == 403
+    provider.assert_not_called()
+    status, _, data = _post(server, "/api/explain", payload)
+    assert status == 200 and json.loads(data)["status"] == "not_found"
+    assert runner.starts == 0
+    with server.explain_lock:
+        assert _post(server, "/api/explain", payload)[0] == 409
+    assert provider.call_count == 1
+
+
+def test_speak_endpoint_returns_wav_and_rejects_foreign_origin(
+    local_server, monkeypatch
+):
+    server, runner = local_server
+    synth = Mock(return_value=b"\x00\x00" * 160)
+    monkeypatch.setattr("demo.speech.synthesize", synth)
+    status, _, _ = _post(
+        server, "/api/speak", {"text": "hi"}, Origin="https://other.example"
+    )
+    assert status == 403
+    synth.assert_not_called()
+    status, _, data = _post(server, "/api/speak", {"text": "Connect the cable."})
+    body = json.loads(data)
+    assert status == 200 and body["sample_rate"] == 16000
+    assert base64.b64decode(body["audio"])[:4] == b"RIFF"
+    synth.assert_called_once_with("Connect the cable.")
+    assert runner.starts == 0
+
+
+def test_speak_endpoint_maps_errors_and_busy_state(local_server, monkeypatch):
+    server, _ = local_server
+    assert _post(server, "/api/speak", {"text": 5})[0] == 400
+    monkeypatch.setattr(
+        "demo.speech.synthesize", Mock(side_effect=ValueError("There is nothing"))
+    )
+    assert _post(server, "/api/speak", {"text": " "})[0] == 400
+    monkeypatch.setattr(
+        "demo.speech.synthesize", Mock(side_effect=RuntimeError("Set the key"))
+    )
+    status, _, data = _post(server, "/api/speak", {"text": "hi"})
+    assert status == 502 and "Set the key" in json.loads(data)["error"]
+    with server.speak_lock:
+        assert _post(server, "/api/speak", {"text": "hi"})[0] == 409

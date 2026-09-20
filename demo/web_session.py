@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import threading
@@ -16,11 +17,13 @@ from urllib.parse import urlsplit
 logger = logging.getLogger(__name__)
 UI_ROOT = Path(__file__).resolve().parent / "web_ui"
 MAX_BODY_BYTES = 2048
+BODY_LIMITS = {"/api/explain": 2_000_000, "/api/speak": 4096}
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+    "/explain.js": ("explain.js", "text/javascript; charset=utf-8"),
     "/assets/arc_hero.png": ("assets/arc_hero.png", "image/png"),
 }
 
@@ -86,6 +89,8 @@ class SessionHTTPServer(ThreadingHTTPServer):
         self.runner = runner
         self.ui_root = ui_root
         self.action_lock = threading.Lock()
+        self.explain_lock = threading.Lock()
+        self.speak_lock = threading.Lock()
         self.closing = False
         self.cleanup_ok = True
         self._jpeg_lock = threading.Lock()
@@ -165,7 +170,8 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
         self.send_header(
             "Content-Security-Policy",
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' blob: data:; connect-src 'self'; font-src 'self'; "
+            "img-src 'self' blob: data:; media-src blob:; connect-src 'self'; "
+            "font-src 'self'; "
             "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; "
             "form-action 'none'",
         )
@@ -235,7 +241,7 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
             except ValueError:
                 pass
         body = b""
-        limit = MAX_BODY_BYTES
+        limit = BODY_LIMITS.get(urlsplit(self.path).path, MAX_BODY_BYTES)
         if 0 < length <= limit + 1:
             try:
                 body = self.rfile.read(length)
@@ -277,6 +283,12 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
         if payload is None:
             return
         path = urlsplit(self.path).path
+        if path == "/api/explain":
+            self._explain(payload)
+            return
+        if path == "/api/speak":
+            self._speak(payload)
+            return
         if path not in ("/api/action", "/api/quit"):
             self._json(404, {"error": "Not found"})
             return
@@ -320,6 +332,64 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
         except Exception:
             logger.exception("Browser UI action failed")
             self._json(500, {"error": "The action failed. Stop and retry."})
+
+    def _explain(self, payload: dict[str, Any]) -> None:
+        from demo.visual_explain import explain
+
+        if not self.server.explain_lock.acquire(blocking=False):
+            self._json(409, {"error": "An explanation is already in progress."})
+            return
+        try:
+            if self.server.closing:
+                self._json(409, {"error": "The session is closing."})
+                return
+            result = explain(payload.get("image"), payload.get("utterance"))
+            self._json(200, result)
+        except ValueError as exc:
+            self._json(400, {"error": str(exc)})
+        except RuntimeError as exc:
+            self._json(502, {"error": str(exc)})
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception:
+            logger.exception("Explain failed")
+            self._json(500, {"error": "Could not explain this image. Please retry."})
+        finally:
+            self.server.explain_lock.release()
+
+    def _speak(self, payload: dict[str, Any]) -> None:
+        from demo.speech import SAMPLE_RATE, synthesize, to_wav
+
+        if not self.server.speak_lock.acquire(blocking=False):
+            self._json(409, {"error": "Speech is already being prepared."})
+            return
+        try:
+            if self.server.closing:
+                self._json(409, {"error": "The session is closing."})
+                return
+            text = payload.get("text")
+            if not isinstance(text, str):
+                raise ValueError("Send the text to speak.")
+            wav = to_wav(synthesize(text))
+            self._json(
+                200,
+                {
+                    "audio": base64.b64encode(wav).decode("ascii"),
+                    "sample_rate": SAMPLE_RATE,
+                },
+            )
+        except ValueError as exc:
+            self._json(400, {"error": str(exc)})
+        except RuntimeError as exc:
+            self._json(502, {"error": str(exc)})
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception:
+            logger.exception("Speech failed")
+            self._json(500, {"error": "Could not prepare speech. Please retry."})
+        finally:
+            self.server.speak_lock.release()
+
 
 def run_web(runner: Any, *, open_browser: bool = True, port: int = 0) -> int:
 

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import sys
 import urllib.error
 import urllib.request
+import wave
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -31,9 +33,9 @@ def synthesize(
 ) -> bytes:
     text = text.strip()
     if not text:
-        raise SpeechError("There is nothing to speak.")
+        raise ValueError("There is nothing to speak.")
     if len(text) > MAX_CHARS:
-        raise SpeechError(f"Keep spoken text under {MAX_CHARS} characters.")
+        raise ValueError(f"Keep spoken text under {MAX_CHARS} characters.")
     key = os.environ.get("ELEVENLABS_API_KEY", "")
     if not key:
         raise SpeechError("Set ELEVENLABS_API_KEY on the server, then retry.")
@@ -65,6 +67,16 @@ def synthesize(
     if len(pcm) < 2:
         raise SpeechError("ElevenLabs returned no audio.")
     return pcm[: len(pcm) - len(pcm) % 2]
+
+
+def to_wav(pcm: bytes) -> bytes:
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(SAMPLE_RATE)
+        wav.writeframes(pcm)
+    return buffer.getvalue()
 
 
 def play(pcm: bytes, device: int | str | None = None) -> None:

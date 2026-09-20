@@ -87,7 +87,7 @@ def test_unusable_text_is_rejected_before_any_request(keyed, monkeypatch, text):
         "urlopen",
         lambda *_a, **_k: pytest.fail("request made for unusable text"),
     )
-    with pytest.raises(speech.SpeechError):
+    with pytest.raises(ValueError):
         speech.synthesize(text)
 
 
@@ -138,3 +138,13 @@ def test_cli_reports_failure_with_exit_code_1(monkeypatch, capsys):
     monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
     assert speech.main(["hello"]) == 1
     assert "ELEVENLABS_API_KEY" in capsys.readouterr().err
+
+
+def test_wav_wrapper_is_readable_mono_16k():
+    import wave
+
+    wav = speech.to_wav(b"\x00\x00" * 160)
+    with wave.open(io.BytesIO(wav)) as reader:
+        assert (reader.getnchannels(), reader.getsampwidth()) == (1, 2)
+        assert reader.getframerate() == 16000
+        assert reader.getnframes() == 160
