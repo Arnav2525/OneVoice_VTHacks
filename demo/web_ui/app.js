@@ -69,7 +69,7 @@ let previousAnnouncement = "";
 let actionError = "";
 let recordingOperation = "";
 
-const CAPTION_FADE_MS = 4000;
+const CAPTION_FADE_MS = 8000;
 let lastCaptionKey = null;
 let lastCaptionAt = 0;
 const targetNodes = new Map();
@@ -300,9 +300,13 @@ function positionTargets() {
     });
 
     if (track.track_id === snapshot.session.selected_id) {
-      Object.assign(ui["live-caption"].style, {
-        left: `${x + width / 2}px`,
-        top: `${y}px`,
+      const bubble = ui["live-caption"];
+      const half = (bubble.offsetWidth || 0) / 2;
+      const tall = bubble.offsetHeight || 0;
+      const centre = x + width / 2;
+      Object.assign(bubble.style, {
+        left: `${Math.min(Math.max(centre, half), Math.max(half, surface.width - half))}px`,
+        top: `${tall ? Math.max(y, tall + 14) : y}px`,
       });
     }
   }
@@ -493,6 +497,7 @@ function render() {
     currentCaption.track_id === session.selected_id;
   ui["live-caption"].hidden = !showCaption;
   ui["live-caption"].classList.toggle("visible", showCaption);
+  if (showCaption) positionTargets();
   ui["record-status-text"].textContent = closed
     ? "Closing the application…"
     : !connected
