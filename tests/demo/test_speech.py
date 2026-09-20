@@ -135,6 +135,7 @@ def test_cli_saves_audio_without_playing(keyed, monkeypatch, tmp_path, capsys):
 
 
 def test_cli_reports_failure_with_exit_code_1(monkeypatch, capsys):
+    monkeypatch.setattr("demo.envfile.load_env", lambda: [])
     monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
     assert speech.main(["hello"]) == 1
     assert "ELEVENLABS_API_KEY" in capsys.readouterr().err
