@@ -97,7 +97,7 @@
     const controller = new AbortController();
     pending = controller;
     const timeout = setTimeout(() => controller.abort(), 30000);
-    el("status").textContent = "Summarizing the captions…";
+    el("status").textContent = "Sending the transcript to Gemini…";
     controls();
     try {
       const result = await post("/api/summarize", {}, controller);

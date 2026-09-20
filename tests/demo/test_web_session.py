@@ -19,7 +19,11 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from demo.session_recording import RecordingSnapshot  # noqa: E402
 from demo.session_state import SessionState  # noqa: E402
-from demo.web_session import MAX_BODY_BYTES, SessionHTTPServer  # noqa: E402
+from demo.web_session import (  # noqa: E402
+    MAX_BODY_BYTES,
+    STORY_ORIGIN,
+    SessionHTTPServer,
+)
 from onevoice.core.models.audio_chunk import AudioChunk  # noqa: E402
 from onevoice.core.models.frame import Frame  # noqa: E402
 from onevoice.core.models.speaker_track import SpeakerTrack  # noqa: E402
@@ -133,6 +137,21 @@ def test_read_only_page_and_state_never_start_capture(local_server):
     assert state["server_time_ms"] > 0
     assert runner.starts == 0
     assert request(server, "/api/frame")[0] == 204
+
+
+def test_story_handoff_ping_is_read_only_and_restricted(local_server):
+    server, runner = local_server
+    status, headers, body = request(
+        server, "/api/ping", headers={"Origin": STORY_ORIGIN}
+    )
+    assert status == 200
+    assert headers["Access-Control-Allow-Origin"] == STORY_ORIGIN
+    assert json.loads(body) == {"app": "onevoice"}
+    assert runner.starts == 0
+    for origin in ("https://example.com", server.origin):
+        status, headers, _ = request(server, "/api/ping", headers={"Origin": origin})
+        assert status == 403
+        assert "Access-Control-Allow-Origin" not in headers
 
 
 def test_start_select_clear_record_stop_use_existing_runner(local_server):
@@ -488,13 +507,13 @@ def test_ping_lets_only_the_story_page_see_that_the_app_is_running(local_server)
 
 def test_ping_gives_other_pages_no_way_to_read_it(local_server):
     server, _ = local_server
-    status, headers, _ = request(
-        server, "/api/ping", headers={"Origin": "https://evil.example"}
-    )
-    assert status == 200
-    assert "Access-Control-Allow-Origin" not in headers
-    assert headers["Cross-Origin-Resource-Policy"] == "same-origin"
+    for origin in ("https://evil.example", server.origin):
+        status, headers, _ = request(server, "/api/ping", headers={"Origin": origin})
+        assert status == 403
+        assert "Access-Control-Allow-Origin" not in headers
+        assert headers["Cross-Origin-Resource-Policy"] == "same-origin"
     status, headers, _ = request(server, "/api/ping")
+    assert status == 403
     assert "Access-Control-Allow-Origin" not in headers
 
 

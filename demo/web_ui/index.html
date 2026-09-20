@@ -76,27 +76,18 @@
           <span class="brand-mark"
             ><svg><use href="#i-wave" /></svg
           ></span>
-          <span
-            >OneVoice<span class="brand-caption"
+          <span class="brand-wordmark"
+            >ONE<span>VOICE</span><span class="brand-caption"
               >YOUR LISTENING SPACE</span
             ></span
           >
         </a>
         <div class="top-actions">
-          <a class="story-link" href="http://127.0.0.1:4319/">Back to the story</a>
+          <a class="story-back" href="http://127.0.0.1:4319/">← Back to story</a>
           <span id="connection" class="connection"
             ><span class="dot"></span
             ><span id="connection-label">Connecting</span></span
           >
-          <button
-            id="settings-toggle"
-            class="icon-button"
-            aria-label="Display settings"
-            aria-expanded="false"
-            aria-controls="settings"
-          >
-            <svg><use href="#i-settings" /></svg>
-          </button>
           <button
             id="fullscreen"
             class="icon-button"
@@ -122,7 +113,7 @@
             </div>
           </div>
 
-          <div id="camera-view" class="camera-view" hidden>
+          <div id="camera-view" class="camera-view">
             <div id="video-surface" class="video-surface">
               <img
                 id="camera-frame"
@@ -154,7 +145,7 @@
             </div>
             <div id="camera-wait" class="camera-wait" hidden>
               <svg><use href="#i-camera" /></svg
-              ><span id="camera-wait-text">Waiting for camera…</span>
+              ><span id="camera-wait-text">Camera is off. Press Start listening.</span>
             </div>
             <span id="scene-notice" class="scene-notice glass"
               >SIMULATED SCENE · NO CAMERA OR MICROPHONE</span
@@ -248,13 +239,13 @@
               class="icon-button captions-button"
               aria-label="Enable live captions"
               aria-pressed="false"
-              title="Live captions for the selected person"
+              title="Sends the selected person’s isolated audio to ElevenLabs while captions are on"
               disabled
             >
               <svg><use href="#i-captions" /></svg>
             </button>
           </nav>
-          <div id="record-status" class="record-status">
+          <div id="record-status" class="record-status" hidden>
             <span class="record-status-dot"></span
             ><span id="record-status-text">Nothing is being saved</span>
           </div>
@@ -265,22 +256,19 @@
           <span id="explanation-status" role="status">Start recording to capture a moment for explanation.</span>
         </div>
         <section id="summary-panel" class="summary-panel glass" aria-labelledby="summary-heading" hidden>
-          <div><span class="caption-kicker">AFTER THE CONVERSATION</span>
-            <h2 id="summary-heading" tabindex="-1">Conversation summary</h2>
-            <p>A short recap and key points from your conversation.</p>
-          </div>
-          <p class="summary-disclosure">Stopping a recording sends its session transcript to Gemini and saves the summary alongside your audio and transcript. Live captions use ElevenLabs. Speech playback is optional.</p>
+          <h2 id="summary-heading" tabindex="-1">Summary</h2>
+          <p class="summary-disclosure">Stopping a recording sends its transcript to Gemini.</p>
           <div class="summary-actions">
-            <button id="summary-run" class="primary-button">Summarize with Gemini</button>
-            <button id="summary-speak" class="text-button" disabled>Speak with ElevenLabs</button>
+            <button id="summary-run" class="primary-button" title="Sends this session’s transcript to Google Gemini">Summarize with Gemini</button>
+            <button id="summary-speak" class="text-button" title="Reads the summary aloud with ElevenLabs" disabled>Speak</button>
             <label class="summary-auto" for="summary-auto">
               <input id="summary-auto" type="checkbox" autocomplete="off" />
-              Speak each summary automatically
+              Speak automatically
             </label>
-            <button id="summary-sample" class="text-button">Play scripted demo</button>
+            <button id="summary-sample" class="text-button">Sample</button>
             <button id="summary-clear" class="text-button">Clear</button>
           </div>
-          <p id="summary-status" role="status" aria-live="polite">Enable Captions, record your conversation, then stop recording. Your summary will appear here.</p>
+          <p id="summary-status" role="status" aria-live="polite">Record a conversation to get a summary.</p>
           <span id="summary-badge" class="summary-badge" hidden></span>
           <p id="summary-text"></p>
           <ul id="summary-points"></ul>
@@ -291,44 +279,12 @@
         </section>
         <div id="notice" class="notice" role="alert" hidden></div>
         <footer>
-          <span>DESIGNED TO KEEP YOU IN THE CONVERSATION</span
-          ><span class="shortcut-hints"
-            ><kbd>Space</kbd> Start / stop <span>·</span> <kbd>R</kbd> Record
-            <span>·</span> <kbd>C</kbd> Clear</span
-          ><button id="quit-button" class="text-button">
-            Close session <svg><use href="#i-arrow" /></svg>
+          <button id="quit-button" class="text-button">
+            Quit <svg><use href="#i-arrow" /></svg>
           </button>
         </footer>
       </main>
 
-      <aside
-        id="settings"
-        class="settings glass"
-        aria-label="Display settings"
-        hidden
-      >
-        <div class="settings-heading">
-          <h2>Make it comfortable</h2>
-          <button
-            id="settings-close"
-            class="icon-button"
-            aria-label="Close display settings"
-          >
-            <svg><use href="#i-close" /></svg>
-          </button>
-        </div>
-        <label class="setting"
-          ><span
-            >Reduce motion<small>Keep changes immediate and calm.</small></span
-          ><input id="reduce-motion" type="checkbox" role="switch"
-        /></label>
-        <label class="setting"
-          ><span
-            >Increase contrast<small>Use more opaque glass panels.</small></span
-          ><input id="high-contrast" type="checkbox" role="switch"
-        /></label>
-        <p>Display preferences are saved on this browser.</p>
-      </aside>
       <div
         id="announcer"
         class="sr-only"

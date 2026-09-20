@@ -38,14 +38,10 @@ const ui = Object.fromEntries(
     "captions-button",
     "live-caption",
     "live-caption-text",
+    "record-status",
     "record-status-text",
     "notice",
     "announcer",
-    "settings",
-    "settings-toggle",
-    "settings-close",
-    "reduce-motion",
-    "high-contrast",
     "fullscreen",
     "quit-button",
   ].map((id) => [id, $(id)]),
@@ -126,39 +122,12 @@ function preferences() {
     ["reduce-motion", "(prefers-reduced-motion: reduce)"],
     ["high-contrast", "(prefers-contrast: more)"],
   ]) {
-    let saved = null;
-    try {
-      saved = localStorage.getItem(`onevoice:${name}`);
-    } catch {
-
-    }
     const query = matchMedia(media);
-    const update = (enabled) => {
-      ui[name].checked = enabled;
-      document.body.classList.toggle(name, enabled);
-    };
-    update(saved === null ? query.matches : saved === "true");
-    query.addEventListener("change", (event) => {
-      if (saved === null) update(event.matches);
-    });
-    ui[name].addEventListener("change", () => {
-      saved = String(ui[name].checked);
-      update(ui[name].checked);
-      try {
-        localStorage.setItem(`onevoice:${name}`, saved);
-      } catch {
-
-      }
-    });
+    const update = (enabled) => document.body.classList.toggle(name, enabled);
+    update(query.matches);
+    query.addEventListener("change", (event) => update(event.matches));
   }
   document.body.dataset.preferencesReady = "true";
-}
-
-function showSettings(open) {
-  ui.settings.hidden = !open;
-  ui["settings-toggle"].setAttribute("aria-expanded", String(open));
-  if (open) ui["reduce-motion"].focus();
-  else ui["settings-toggle"].focus();
 }
 
 function announce(message) {
@@ -345,6 +314,12 @@ function render() {
       : "Camera is off."
     : "Waiting for camera…";
   ui["camera-frame"].hidden = synthetic || !frameFresh();
+  if (!synthetic && snapshot.frame?.width && snapshot.frame?.height) {
+    document.body.style.setProperty?.(
+      "--cam-ar",
+      (snapshot.frame.width / snapshot.frame.height).toFixed(4),
+    );
+  }
   ui["focus-card"].hidden = phase === "ready";
   ui["phase-label"].textContent =
     {
@@ -380,6 +355,13 @@ function render() {
   if (copy !== previousCopy) {
     ui["status-title"].textContent = title;
     ui["status-detail"].textContent = detail;
+    ui["status-detail"].hidden = ![
+      "error",
+      "unavailable",
+      "target_lost",
+      "disconnected",
+      "closed",
+    ].includes(phase);
     ui["status-copy"].classList.remove("changing");
     void ui["status-copy"].offsetWidth;
     ui["status-copy"].classList.add("changing");
@@ -394,27 +376,17 @@ function render() {
   ui["people-count"].lastElementChild.textContent = session.active
     ? `${connected ? session.face_count : "—"} people ${snapshot.identity?.enabled ? "recognized" : "visible"}`
     : "One voice at a time";
-  ui["caption-kicker"].textContent = synthetic
-    ? session.active
-      ? "EXPLORE THE INTERACTION"
-      : "LET’S GET STARTED"
-    : session.active
-      ? "YOUR LISTENING SESSION"
-      : "READY TO CONNECT";
-  ui["caption-detail"].textContent = session.active
-    ? synthetic
-      ? "Synthetic people. Isolation is off."
-      : "Choose a face to change your focus."
-    : "Your devices stay off until you start.";
+  ui["caption-kicker"].textContent = "";
+  ui["caption-detail"].textContent = "";
   if (!synthetic && session.active && snapshot.identity?.enabled) {
     const identity = snapshot.identity;
     ui["caption-detail"].textContent = identity.error
-      ? "Face matching paused. Move into good light and face the camera."
+      ? "Face matching paused."
       : identity.unmatched
         ? identity.registered >= identity.capacity
-          ? "Matching Person 1–3. Unrecognized faces stay unlabelled. Stop/start to reset people."
-          : "Matching faces… Face the camera briefly to get a person label."
-        : "Person 1–3 · Faces matched locally for this session. Stop clears face profiles.";
+          ? "Unrecognized faces stay unlabelled."
+          : "Matching faces…"
+        : "";
   }
   const startLabel = busy
     ? phase === "stopping"
@@ -501,7 +473,7 @@ function render() {
   ui["live-caption"].hidden = !showCaption;
   ui["live-caption"].classList.toggle("visible", showCaption);
   if (showCaption) positionTargets();
-  ui["record-status-text"].textContent = closed
+  const recordText = closed
     ? "Closing the application…"
     : !connected
       ? "Recording status unavailable"
@@ -518,6 +490,8 @@ function render() {
               : recording.path
                 ? "Clip saved on this laptop"
                 : "Nothing is being saved";
+  ui["record-status-text"].textContent = recordText;
+  ui["record-status"].hidden = recordText === "Nothing is being saved";
   const notice =
     actionError ||
     recording.error ||
@@ -763,10 +737,6 @@ ui["session-button"].addEventListener("click", () =>
 ui["record-button"].addEventListener("click", () => action("record"));
 ui["clear-button"].addEventListener("click", () => action("clear"));
 ui["captions-button"].addEventListener("click", () => action("captions"));
-ui["settings-toggle"].addEventListener("click", () =>
-  showSettings(ui.settings.hidden),
-);
-ui["settings-close"].addEventListener("click", () => showSettings(false));
 ui.fullscreen.addEventListener("click", fullscreen);
 ui["quit-button"].addEventListener("click", quit);
 document.addEventListener("fullscreenchange", () => {
@@ -777,10 +747,6 @@ document.addEventListener("fullscreenchange", () => {
   positionTargets();
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !ui.settings.hidden) {
-    showSettings(false);
-    return;
-  }
   if (
     event.repeat ||
     event.ctrlKey ||
@@ -798,14 +764,6 @@ document.addEventListener("keydown", (event) => {
   else if (key === "c" && !ui["clear-button"].disabled)
     ui["clear-button"].click();
   else if (key === "f") fullscreen();
-});
-document.addEventListener("pointerdown", (event) => {
-  if (
-    !ui.settings.hidden &&
-    !ui.settings.contains(event.target) &&
-    !ui["settings-toggle"].contains(event.target)
-  )
-    showSettings(false);
 });
 new ResizeObserver(positionTargets).observe(ui["video-surface"]);
 window.addEventListener("pagehide", () => {

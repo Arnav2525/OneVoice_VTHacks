@@ -1,4 +1,3 @@
-import {makeWordParticles} from './word-particles.js';
 import * as THREE from 'three';
 import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -9,9 +8,9 @@ import { makeTerrain, elevation, hash } from './terrain.js';
 import { makeWind } from './weather.js';
 import { makeYeti } from './yeti.js';
 import { makeAtmosphere } from './atmosphere.js';
-import {makeForest,makeSuitcase} from './journey.js';
+import {makeSuitcase} from './journey.js';
 
-export async function createWorld(canvas, onReady) {
+export async function createWorld(canvas, onReady, onPacked) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
@@ -35,14 +34,12 @@ export async function createWorld(canvas, onReady) {
   const rim = new THREE.DirectionalLight('#b1d1ff', 1.35);
   rim.position.set(5, 3, -8); scene.add(rim);
 
-  document.querySelector('#loading-text').textContent='LOADING THE MOUNTAIN LANDSCAPE';
   const alpineTerrain=new THREE.Group();scene.add(alpineTerrain);await makeTerrain(alpineTerrain,renderer);
 
   const haze = new THREE.Mesh(new THREE.PlaneGeometry(240,80),new THREE.MeshBasicMaterial({color:'#b9c4d3',transparent:true,opacity:.12,depthWrite:false}));
   haze.position.set(0,20,-110); scene.add(haze);
   const product=new THREE.Group(); scene.add(product);
   const cradle=new THREE.Group(); product.add(cradle);
-  document.querySelector('#loading-text').textContent='BRINGING V5 INTO VIEW';
   const response=await fetch('assets/glasses-v5.ovm');
   if(!response.ok)throw new Error('V5 model is unavailable');
   const buffer=await response.arrayBuffer(),header=new DataView(buffer);
@@ -104,17 +101,14 @@ export async function createWorld(canvas, onReady) {
   let width=0,height=0,progress=0,rotation=0,pitch=0,paused=reduced.matches,visible=true,clock=0,last=performance.now(),raf;
   let pointerX=0,pointerY=0,parallaxX=0,parallaxY=0;
   let sunset=false,warmth=0,details=false;
-  let suitcase=null;
-  let forest=null,biome=false,travelTime=-1,travelPending=false,switched=false;
+  let suitcase=null,travelTime=-1,travelPending=false;
 
-  const travelButton=document.querySelector('#travel-toggle'),travelVeil=document.querySelector('#travel-veil'),travelStatus=document.querySelector('#travel-status');
-  const wordParticles=makeWordParticles(travelVeil);
-  const forestFog=new THREE.Color('#52664d');
+  const travelButton=document.querySelector('#travel-toggle'),travelStatus=document.querySelector('#travel-status');
   async function travel(){
     if(travelTime>=0||travelPending)return;
-    travelPending=true;travelButton.disabled=true;travelButton.textContent='PREPARING JOURNEY…';
-    try{const loaded=await Promise.all([forest?Promise.resolve(forest):makeForest(),suitcase?Promise.resolve(suitcase):makeSuitcase()]);forest=loaded[0];suitcase=loaded[1];scene.add(forest.root,suitcase.root);rotation=0;pitch=0;switched=false;}
-    catch(error){travelPending=false;travelButton.disabled=false;travelButton.textContent='RETRY JOURNEY ↗';travelStatus.textContent='The journey could not load. Your current scene is still available.';console.error(error);}
+    travelPending=true;travelButton.disabled=true;travelButton.textContent='PACKING THE GLASSES…';
+    try{suitcase??=await makeSuitcase();scene.add(suitcase.root);rotation=0;pitch=0;}
+    catch(error){travelPending=false;travelButton.disabled=false;travelButton.textContent='ABOUT / PACK UP ↗';travelStatus.textContent='The case could not load. Use the About link to continue.';console.error(error);onPacked();}
   }
   const dayFog=new THREE.Color('#b5c5d6'),eveningFog=new THREE.Color('#c6b7ac');
   const daySun=new THREE.Color('#fff2df'),eveningSun=new THREE.Color('#ffc388');
@@ -134,7 +128,7 @@ export async function createWorld(canvas, onReady) {
   function render(now){
     raf=requestAnimationFrame(render);const dt=Math.min((now-last)/1000,.05);last=now;if(!visible||document.hidden)return;
     if(!paused)clock+=dt;
-    if(travelPending&&forest&&suitcase&&progress<.025){travelPending=false;travelTime=0;document.querySelector('.world').classList.add('is-travelling');}
+    if(travelPending&&suitcase&&progress<.025){travelPending=false;travelTime=0;document.querySelector('.world').classList.add('is-travelling');}
     if(travelTime>=0)travelTime+=dt*(reduced.matches?3:1);
     const p=progress*6,idx=Math.min(3,Math.floor(p)),u=THREE.MathUtils.smoothstep(p-idx,0,1),a=states[idx],b=states[idx+1],mix=k=>THREE.MathUtils.lerp(a[k],b[k],u),mobile=width<650;
     const displayScale=mobile?.64-.10*THREE.MathUtils.smoothstep(p,0,.8):Math.min(1,width/1100);
@@ -143,23 +137,18 @@ export async function createWorld(canvas, onReady) {
     const exploration=1-THREE.MathUtils.smoothstep(p,3.5,4.1);
     product.position.set(x,y+Math.sin(clock*.65)*.055*exploration,0);
     product.scale.setScalar(mix('s')*displayScale);
-    if(biome&&p<1){product.position.y-=.12;}
     product.rotation.set(mix('rx')+pitch*exploration,mix('ry')+rotation*exploration,Math.sin(clock*.3)*.012*exploration);
     if(travelTime>=0){
-      const t=travelTime,pack=THREE.MathUtils.smoothstep(t,.4,1.7)*(1-THREE.MathUtils.smoothstep(t,6.4,7.6));
+      const t=travelTime,pack=THREE.MathUtils.smoothstep(t,.4,1.7);
       suitcase.root.visible=true;suitcase.root.position.set(x,-1.6,0);suitcase.root.rotation.y=-.2;suitcase.root.scale.setScalar(displayScale);
-      suitcase.hinge.rotation.x=-1.8*(1-THREE.MathUtils.smoothstep(t,1.6,2.6)+THREE.MathUtils.smoothstep(t,6.1,6.8));
+      suitcase.hinge.rotation.x=-1.8*(1-THREE.MathUtils.smoothstep(t,1.6,2.6));
       product.position.y-=pack*.9;product.scale.multiplyScalar(1-pack*.52);
       product.scale.multiplyScalar(1-.15*Math.sin(Math.min(t/6,1)*Math.PI));
       product.rotation.y+=Math.sin(Math.min(t/6,1)*Math.PI)*.35;
-      product.visible=t<2.7||t>6.3;
-      const cover=THREE.MathUtils.smoothstep(t,2.25,2.85)*(1-THREE.MathUtils.smoothstep(t,6.05,6.85));travelVeil.style.opacity=cover;wordParticles.draw(t,reduced.matches);
-      travelStatus.textContent=t<2?'ONE VOICE. EVERYWHERE.':t<6.3?((switched?!biome:biome)?'RETURNING TO THE SUMMIT':'BOUND FOR THE FOREST'):'A NEW PLACE. THE SAME CONNECTION.';
-      if(t>=4.7&&!switched){biome=!biome;switched=true;document.querySelector('.world').classList.toggle('is-forest',biome);document.querySelector('#biome-name').textContent=biome?'FOREST / 02':'ALPINE / 01';canvas.setAttribute('aria-label',`Interactive 3D One Voice glasses in a ${biome?'forest clearing':'snowy mountain landscape'}. Drag to rotate.`);}
-      if(t>8.2){travelTime=-1;suitcase.root.visible=false;product.visible=true;travelVeil.style.opacity=0;travelButton.disabled=false;travelButton.textContent=biome?'TRAVEL TO SNOW ↗':'TRAVEL AROUND ↗';document.querySelector('.world').classList.remove('is-travelling');travelStatus.textContent=biome?'Arrived in the forest. Drag to explore, or scroll to continue.':'Back at the summit.';}
+      product.visible=t<2.55;
+      travelStatus.textContent=t<2.6?'PACKING THE GLASSES':'OPENING ABOUT';
+      if(t>3.7){travelTime=-1;onPacked();}
     }
-    alpineTerrain.visible=!biome;haze.visible=!biome;windRoot.visible=!biome;snowPoints.visible=!biome;
-    if(forest){forest.root.visible=biome;forest.update(clock,p);}
     parallaxX+=(pointerX-parallaxX)*(1-Math.exp(-dt*3));parallaxY+=(pointerY-parallaxY)*(1-Math.exp(-dt*3));
     camera.position.set(Math.sin(Math.min(p,4)/4*Math.PI)*.85+(paused?0:parallaxX*.48*exploration),mix('cy')+(paused?0:parallaxY*.18*exploration),mix('cz'));
     lensCenter.set(-.36,.82,2.622);product.localToWorld(lensCenter);
@@ -177,13 +166,13 @@ export async function createWorld(canvas, onReady) {
     portalRing.style.left=`${cx}px`;portalRing.style.top=`${cy}px`;portalRing.style.width=portalRing.style.height=`${radius*2}px`;portalRing.style.opacity=portalProgress>0&&portalProgress<.85?Math.sin(portalProgress*Math.PI)*.7:0;
     flare.style.opacity=reduced.matches?0:Math.sin(portalProgress*Math.PI)*.14;
     warmth+=(Number(sunset)-warmth)*(1-Math.exp(-dt*1.8));
-    scene.fog.color.copy(dayFog).lerp(eveningFog,warmth);if(biome)scene.fog.color.copy(forestFog);scene.fog.density=biome?.032:.0105;
+    scene.fog.color.copy(dayFog).lerp(eveningFog,warmth);scene.fog.density=.0105;
     sun.color.copy(daySun).lerp(eveningSun,warmth);sun.position.y=19-warmth*8;sun.intensity=2.8-warmth*.4;
     skyLight.color.copy(daySky).lerp(nightSky,warmth);
-    if(biome){sun.color.set("#ffe2a1");sun.intensity=3.2;skyLight.color.set("#a8c797");}
-    atmosphere.update(clock,biome?.8:warmth);
+    atmosphere.update(clock,warmth);
     wind.update(clock,.7+Math.sin(portalProgress*Math.PI)*1.15);
-    yeti.update(clock,parallaxX);yeti.root.visible=!biome&&!mobile&&p<3.6&&travelTime<0;
+    yeti.update(clock,parallaxX);
+    yeti.root.visible=!mobile&&p<3.6;
     pin.copy(yeti.root.position);pin.y-=.2;pin.project(camera);hello.hidden=!yeti.root.visible||p>.6;
     hello.style.left=`${(pin.x*.5+.5)*width}px`;hello.style.top=`${(-pin.y*.5+.5)*height}px`;
     detailButtons.forEach((button,i)=>{button.hidden=travelTime>=0||!details||p>3.6||(i===2&&p<2.35);pin.copy(detailPositions[i]);product.localToWorld(pin);pin.project(camera);button.style.left=`${(pin.x*.5+.5)*width}px`;button.style.top=`${(-pin.y*.5+.5)*height}px`;});
@@ -201,7 +190,6 @@ export async function createWorld(canvas, onReady) {
   canvas.addEventListener('pointerleave',()=>{pointerX=0;pointerY=0;});
   const release=()=>drag=null;canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
   canvas.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();rotation+=(e.key==='ArrowLeft'?-.25:.25);}if(e.key==='Home'){rotation=0;pitch=0;}});
-  document.querySelector('#loading-text').textContent='PREPARING THE FIRST FRAME';
   let compileTimer;
   try {
     await Promise.race([renderer.compileAsync(scene,camera),new Promise(resolve=>{compileTimer=setTimeout(resolve,5000);})]);
