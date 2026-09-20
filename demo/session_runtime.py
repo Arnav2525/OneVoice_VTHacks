@@ -10,6 +10,7 @@ from typing import Any
 
 from demo.devices import resolve_audio_device
 from demo.elevenlabs_transcription import ElevenLabsCaptions as SessionCaptions
+from demo.recording_summary import RecordingSummaries
 from demo.safety import build_safety_monitor
 from demo.session_recording import SessionRecorder
 from demo.session_state import SessionState
@@ -268,8 +269,10 @@ class SessionRunner:
         )
         self.state = SessionState("preview" if self.preview else "live")
         self.recorder = SessionRecorder()
+        self.recording_summaries = RecordingSummaries()
         self.captions = SessionCaptions(
-            self.state, self.config.get("captions", {})
+            self.state, self.config.get("captions", {}),
+            on_final=self.recorder.on_transcript,
         )
         self.record_root = record_root
         self._record_control_lock = threading.Lock()
@@ -307,6 +310,7 @@ class SessionRunner:
             else:
                 self.state.begin_start()
                 self.captions.clear_transcript()
+                self.recorder.begin_transcript_session()
             self._cancel.clear()
 
             self._stop_reason = None
@@ -438,7 +442,7 @@ class SessionRunner:
         try:
             with self._record_io_lock:
                 if stopping:
-                    self.recorder.stop_clip()
+                    self._stop_recorded_clip()
                 elif self._recording_allowed():
                     self.recorder.start_clip(self.record_root, self.state.mode)
                     if not self._recording_allowed():
@@ -453,7 +457,14 @@ class SessionRunner:
         if worker is not None and worker.ident is not None:
             worker.join()
         with self._record_io_lock:
-            self.recorder.stop_clip()
+            self._stop_recorded_clip()
+
+    def _stop_recorded_clip(self) -> None:
+        active = self.recorder.snapshot().active
+        path = self.recorder.stop_clip()
+        if active and path is not None:
+            self.captions.finish_pending()
+            self.recording_summaries.start(path, self.recorder.transcript_text())
 
     def _build(self) -> tuple[Any, Any]:
         config = copy.deepcopy(self.config)

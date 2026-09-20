@@ -76,6 +76,10 @@ def session_payload(runner: Any) -> dict[str, Any]:
         "synthetic": not runner.live,
         "identity": getattr(runner, "identity_status", lambda: {})(),
         "captions": captions.snapshot() if captions is not None else _NO_CAPTIONS,
+        "recording_summary": (
+            runner.recording_summaries.snapshot()
+            if hasattr(runner, "recording_summaries") else None
+        ),
         "frame": frame_info,
         "server_time_ms": time.monotonic() * 1000.0,
     }

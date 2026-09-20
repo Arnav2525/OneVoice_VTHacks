@@ -243,6 +243,9 @@
               <span class="record-symbol"></span
               ><span id="record-label">Record clip</span>
             </button>
+            <button id="summary-view" class="text-button" aria-controls="summary-panel" aria-expanded="false">
+              View summary
+            </button>
             <button
               id="clear-button"
               class="icon-button clear-button"
@@ -269,12 +272,12 @@
           </div>
         </div>
 
-        <section class="summary-panel glass" aria-labelledby="summary-heading">
+        <section id="summary-panel" class="summary-panel glass" aria-labelledby="summary-heading" hidden>
           <div><span class="caption-kicker">AFTER THE CONVERSATION</span>
-            <h2 id="summary-heading">Conversation summary</h2>
-            <p>Summarize what the selected person said, using their live captions.</p>
+            <h2 id="summary-heading" tabindex="-1">Conversation summary</h2>
+            <p>A short recap and key points from your conversation.</p>
           </div>
-          <p class="summary-disclosure">Summarize sends the selected person’s caption text from this session to Google (Gemini). Captions are transcribed on this computer, and that text is kept in memory only until you start a new session or quit. Speak sends only the summary text to ElevenLabs, and only when you press it or turn on automatic speaking, which is off by default and resets on reload.</p>
+          <p class="summary-disclosure">Stopping a recording sends its session transcript to Gemini and saves the summary alongside your audio and transcript. Live captions use ElevenLabs. Speech playback is optional.</p>
           <div class="summary-actions">
             <button id="summary-run" class="primary-button">Summarize with Gemini</button>
             <button id="summary-speak" class="text-button" disabled>Speak with ElevenLabs</button>
@@ -285,7 +288,7 @@
             <button id="summary-sample" class="text-button">Play scripted demo</button>
             <button id="summary-clear" class="text-button">Clear</button>
           </div>
-          <p id="summary-status" role="status" aria-live="polite">Turn on Captions and let the selected person speak, then summarize.</p>
+          <p id="summary-status" role="status" aria-live="polite">Enable Captions, record your conversation, then stop recording. Your summary will appear here.</p>
           <span id="summary-badge" class="summary-badge" hidden></span>
           <p id="summary-text"></p>
           <ul id="summary-points"></ul>

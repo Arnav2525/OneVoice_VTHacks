@@ -530,6 +530,9 @@ function render() {
 }
 
 function accept(data) {
+  if (window.onevoiceRecordingSummary) {
+    window.onevoiceRecordingSummary(data.recording_summary);
+  }
   if (closed || suspended) return;
   if (
     !data ||

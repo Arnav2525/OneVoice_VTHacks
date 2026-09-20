@@ -161,7 +161,9 @@ class RealtimeStream:
 
 
 class ElevenLabsCaptions:
-    def __init__(self, state, settings=None, stream_factory=RealtimeStream):
+    def __init__(
+        self, state, settings=None, stream_factory=RealtimeStream, on_final=None
+    ):
         self.state = state
         self.settings = settings or {}
         self.factory = stream_factory
@@ -176,6 +178,14 @@ class ElevenLabsCaptions:
         self.retired = deque(maxlen=64)
         self.lines = deque(maxlen=300)
         self.revision = 0
+        self.on_final = on_final
+        self.pending_streams = deque(maxlen=64)
+
+    def _save_final(self, selected, text):
+        speaker = self.state.person_name(selected[0])
+        self.lines.append((speaker, text.strip()))
+        if self.on_final is not None:
+            self.on_final(speaker, text.strip())
 
     def toggle(self):
         with self.lock:
@@ -190,9 +200,21 @@ class ElevenLabsCaptions:
             self.generation += 1
             if self.stream is not None:
                 self.stream.stop()
+                self.pending_streams.append(self.stream)
             self.stream = None
             self.key = None
             self.current = None
+
+    def finish_pending(self):
+        self.retire_current_sink()
+        with self.lock:
+            pending = list(self.pending_streams)
+            self.pending_streams.clear()
+        deadline = time.monotonic() + 3
+        for stream in pending:
+            thread = getattr(stream, "thread", None)
+            if thread is not None:
+                thread.join(timeout=max(0, deadline - time.monotonic()))
 
     def on_output(self, chunk, allowed):
         selected = self.state.selection()
@@ -235,9 +257,7 @@ class ElevenLabsCaptions:
                 return
             if generation != self.generation:
                 if final and generation in self.retired:
-                    self.lines.append(
-                        (self.state.person_name(selected[0]), text.strip())
-                    )
+                    self._save_final(selected, text)
                 return
             if not self.enabled:
                 return
@@ -250,7 +270,7 @@ class ElevenLabsCaptions:
                 "final": final,
             }
             if final:
-                self.lines.append((self.state.person_name(selected[0]), text.strip()))
+                self._save_final(selected, text)
 
     def snapshot(self):
         with self.lock:

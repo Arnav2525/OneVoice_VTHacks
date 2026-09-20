@@ -26,7 +26,7 @@ def summarize(transcript: str) -> dict:
     key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
         raise RuntimeError("Set GEMINI_API_KEY on the server, then retry.")
-    model = os.environ.get("ONEVOICE_GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.environ.get("ONEVOICE_GEMINI_MODEL", "gemini-3.6-flash")
     if not re.fullmatch(r"[a-zA-Z0-9._-]+", model):
         raise RuntimeError("Invalid ONEVOICE_GEMINI_MODEL setting.")
     prompt = (
@@ -65,8 +65,10 @@ def summarize(transcript: str) -> dict:
         return Summary.model_validate_json(text).model_dump()
     except urllib.error.HTTPError as exc:
         message = {
+            400: "Gemini rejected the request. Check the API key and model settings.",
             401: "Gemini rejected the API key.",
             403: "Gemini access denied. Check the API key and project.",
+            404: f"Gemini model {model} is unavailable. Update ONEVOICE_GEMINI_MODEL.",
             429: "Gemini quota reached. Please retry later.",
         }.get(exc.code, "Gemini request failed. Check model access and retry.")
         raise RuntimeError(message) from None

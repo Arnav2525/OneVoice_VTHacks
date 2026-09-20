@@ -57,6 +57,32 @@ class SessionRecorder:
         self._operations = threading.Lock()
         self._clip: _Clip | None = None
         self._start_error: str | None = None
+        self._transcript_lock = threading.Lock()
+        self._transcript_lines: list[str] = []
+        self._transcript_paths: list[Path] = []
+
+    def begin_transcript_session(self) -> None:
+        with self._transcript_lock:
+            self._transcript_lines.clear()
+            self._transcript_paths.clear()
+
+    def transcript_text(self) -> str:
+        with self._transcript_lock:
+            return "".join(self._transcript_lines)
+
+    def on_transcript(self, speaker: str, text: str) -> None:
+        line = f"{speaker}: {text.strip()}\n"
+        with self._transcript_lock:
+            self._transcript_lines.append(line)
+            for path in self._transcript_paths:
+                try:
+                    with path.open("a", encoding="utf-8") as handle:
+                        handle.write(line)
+                except OSError as exc:
+                    with self._lock:
+                        self._start_error = f"Could not save transcript: {exc}"
+                        if self._clip is not None and self._clip.path == path.parent:
+                            self._clip.error = self._start_error
 
     def start_clip(self, root: Path, mode: str) -> Path:
 
@@ -84,6 +110,12 @@ class SessionRecorder:
                     stamp.isoformat(),
                     queue.Queue(maxsize=self._capacity),
                 )
+                with self._transcript_lock:
+                    transcript_path = path / "transcript.txt"
+                    transcript_path.write_text(
+                        "".join(self._transcript_lines), encoding="utf-8"
+                    )
+                    self._transcript_paths.append(transcript_path)
                 clip.thread = threading.Thread(
                     target=self._run,
                     args=(clip,),
@@ -335,6 +367,11 @@ class SessionRecorder:
                     "reconstruct timing. No video is recorded."
                 ),
                 "streams": streams,
+                "transcript": {
+                    "file": "transcript.txt",
+                    "scope": "Finalized captions from the full listening session; "
+                    "updated until that session ends. Captions must be enabled.",
+                },
             }
             try:
                 with (clip.path / "manifest.json").open(

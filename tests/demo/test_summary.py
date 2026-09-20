@@ -60,7 +60,7 @@ def test_request_carries_only_the_transcript_text(keyed, monkeypatch):
     request = seen["request"]
     assert result == {"summary": "They planned lunch.", "key_points": ["Noon", "Cafe"]}
     assert request.get_header("X-goog-api-key") == FAKE_KEY
-    assert "gemini-2.5-flash:generateContent" in request.full_url
+    assert "gemini-3.6-flash:generateContent" in request.full_url
     body = json.loads(request.data)
     parts = body["contents"][0]["parts"]
     assert len(parts) == 1 and "inline_data" not in parts[0]
