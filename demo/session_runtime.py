@@ -204,8 +204,6 @@ class SessionSink:
 
 
 class SessionRunner:
-    CAMERA_SOURCES: dict[str, int] = {"built_in": 0, "external": 1}
-
     def __init__(
         self,
         config: dict[str, Any],
@@ -244,26 +242,10 @@ class SessionRunner:
         self._separator: Any = None
         self._identity_tracker: Any = None
         self._recording_cleanup_pending = False
-        self._camera_override: int | None = None
-
-    @property
-    def camera_source(self) -> str:
-        index = self._camera_override
-        if index is None:
-            index = int(self.config.get("video", {}).get("device_index", 0))
-        return "built_in" if index == 0 else "external"
 
     @property
     def busy(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
-
-    def set_camera_source(self, source: str) -> bool:
-        if source not in self.CAMERA_SOURCES:
-            return False
-        if self.busy or self.state.snapshot().active:
-            return False
-        self._camera_override = self.CAMERA_SOURCES[source]
-        return True
 
     def start(self) -> None:
 
@@ -466,21 +448,15 @@ class SessionRunner:
                 )
             )
             video_config = config.get("video", {})
-            camera_device_index = (
-                self._camera_override
-                if self._camera_override is not None
-                else int(video_config.get("device_index", 0))
-            )
             video = WebcamSource(
-                device_index=camera_device_index,
+                device_index=int(video_config.get("device_index", 0)),
                 width=int(video_config.get("width", 640)),
                 height=int(video_config.get("height", 480)),
                 fps=float(video_config.get("fps", 30.0)),
             )
             logger.info(
-                "Capture: camera %s (%s), microphone %s; playback %s",
-                camera_device_index,
-                self.camera_source,
+                "Capture: camera %s, microphone %s; playback %s",
+                video_config.get("device_index", 0),
                 self._input_device,
                 output_device,
             )

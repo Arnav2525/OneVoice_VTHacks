@@ -832,18 +832,3 @@ def test_configured_camera_size_reaches_the_webcam(monkeypatch):
     )
     runner._build()
     camera.assert_called_once_with(device_index=1, width=1280, height=720, fps=30.0)
-
-
-def test_camera_source_override_beats_config_and_untouched_keeps_it(monkeypatch):
-    runner, camera = _live_runner(monkeypatch, {"device_index": 2})
-    assert runner.camera_source == "external"
-    assert runner.set_camera_source("built_in")
-    assert runner.camera_source == "built_in"
-    runner._build()
-    assert camera.call_args.kwargs["device_index"] == 0
-
-
-def test_unknown_camera_source_is_rejected(monkeypatch):
-    runner, _ = _live_runner(monkeypatch, {})
-    assert not runner.set_camera_source("hdmi")
-    assert runner.camera_source == "built_in"

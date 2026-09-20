@@ -73,11 +73,6 @@ def session_payload(runner: Any) -> dict[str, Any]:
         "synthetic": not runner.live,
         "identity": getattr(runner, "identity_status", lambda: {})(),
         "captions": captions.snapshot() if captions is not None else _NO_CAPTIONS,
-        "camera": {
-            "source": getattr(runner, "camera_source", "built_in"),
-            "options": list(getattr(runner, "CAMERA_SOURCES", {"built_in": 0})),
-            "locked": bool(session.active or runner.busy),
-        },
         "frame": frame_info,
         "server_time_ms": time.monotonic() * 1000.0,
     }
@@ -304,22 +299,6 @@ class SessionRequestHandler(BaseHTTPRequestHandler):
                     runner.toggle_recording()
                 elif action == "captions":
                     runner.toggle_captions()
-                elif action == "camera":
-                    source = payload.get("source")
-                    if not isinstance(source, str) or not source:
-                        self._json(400, {"error": "Camera action requires a source"})
-                        return
-                    if not runner.set_camera_source(source):
-                        self._json(
-                            409,
-                            {
-                                "error": (
-                                    "Stop the session before changing the camera "
-                                    "source, or that source is unknown."
-                                )
-                            },
-                        )
-                        return
                 elif action in ("select", "clear"):
                     track_id = payload.get("track_id") if action == "select" else None
                     if action == "select" and (
