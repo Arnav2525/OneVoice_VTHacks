@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import sys
@@ -10,8 +8,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
+from demo import safety_demo
 from demo.safety import FakeClassifier, SafetyEvent
 from demo.safety_demo import build_safety_pipeline
+
 
 def _wait_until(predicate, timeout: float = 2.0, interval: float = 0.01) -> bool:
     deadline = time.monotonic() + timeout
@@ -20,6 +20,7 @@ def _wait_until(predicate, timeout: float = 2.0, interval: float = 0.01) -> bool
             return True
         time.sleep(interval)
     return predicate()
+
 
 def test_mock_mode_wires_raw_tap_into_monitor() -> None:
 
@@ -33,6 +34,7 @@ def test_mock_mode_wires_raw_tap_into_monitor() -> None:
     finally:
         pipeline.stop()
 
+
 def test_mock_mode_never_triggers_with_default_fake_classifier() -> None:
 
     pipeline, monitor = build_safety_pipeline(config={}, live=False)
@@ -43,6 +45,7 @@ def test_mock_mode_never_triggers_with_default_fake_classifier() -> None:
     finally:
         pipeline.stop()
     assert monitor.is_active() is False
+
 
 def test_scripted_classifier_activates_override_during_a_real_run() -> None:
 
@@ -60,6 +63,7 @@ def test_scripted_classifier_activates_override_during_a_real_run() -> None:
     finally:
         pipeline.stop()
 
+
 def test_stop_shuts_down_cleanly_without_double_starting_the_monitor() -> None:
 
     pipeline, monitor = build_safety_pipeline(config={}, live=False)
@@ -69,3 +73,31 @@ def test_stop_shuts_down_cleanly_without_double_starting_the_monitor() -> None:
 
     pipeline.start()
     pipeline.stop()
+
+
+def test_real_detector_flag_is_off_by_default() -> None:
+    args = safety_demo._build_argparser().parse_args([])
+
+    assert args.real_detector is False
+
+
+def test_real_detector_flag_can_be_requested() -> None:
+    args = safety_demo._build_argparser().parse_args(["--real-detector"])
+
+    assert args.real_detector is True
+
+
+def test_the_notice_says_no_alarm_can_fire_with_the_fake_detector(capsys) -> None:
+    safety_demo._announce_detector(real_detector=False)
+
+    out = capsys.readouterr().out.lower()
+    assert "never" in out or "will not" in out
+
+
+def test_the_notice_names_the_real_detector_when_it_is_in_use(capsys) -> None:
+    """The old notice claimed no real detector existed, which is now false."""
+    safety_demo._announce_detector(real_detector=True)
+
+    out = capsys.readouterr().out
+    assert "YAMNet" in out
+    assert "no real detector wired in yet" not in out
