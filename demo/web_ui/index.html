@@ -281,19 +281,24 @@
           <p id="explain-source">No snapshot yet. CPU demo uses a drawn scene and scripted sentence.</p>
           <label for="explain-utterance">Sentence to explain · entered manually</label>
           <textarea id="explain-utterance" maxlength="1000" rows="2" placeholder="Type or paste what the selected person said."></textarea>
-          <p class="explain-disclosure">Explain with Gemini sends this frozen image and sentence to Google. Speak sends only the explanation text to ElevenLabs. No continuous video is sent.</p>
+          <p class="explain-disclosure">Explain with Gemini sends this frozen image and sentence to Google. Speak sends only the explanation text to ElevenLabs, and only when you press it or turn on automatic speaking, which is off by default and resets on reload. No continuous video is sent.</p>
           <div class="explain-actions">
             <button id="explain-send" class="primary-button" disabled>Explain with Gemini</button>
             <button id="explain-speak" class="text-button" disabled>Speak with ElevenLabs</button>
+            <label class="explain-auto" for="explain-auto">
+              <input id="explain-auto" type="checkbox" autocomplete="off" />
+              Speak each answer automatically
+            </label>
             <button id="explain-replay" class="text-button" disabled>Play scripted result</button>
             <button id="explain-clear" class="text-button">Clear</button>
           </div>
           <p id="explain-status" role="status" aria-live="polite">Choose a snapshot to begin.</p>
+          <span id="explain-badge" class="explain-badge" hidden></span>
+          <blockquote id="explain-quote" hidden></blockquote>
+          <p id="explain-answer"></p>
           <div class="explain-image" id="explain-image" hidden>
             <canvas id="explain-canvas" aria-label="Frozen scene with numbered object highlights"></canvas>
           </div>
-          <blockquote id="explain-quote" hidden></blockquote>
-          <p id="explain-answer"></p>
           <div id="explain-choices" class="explain-actions"></div>
         </section>
         <div id="notice" class="notice" role="alert" hidden></div>

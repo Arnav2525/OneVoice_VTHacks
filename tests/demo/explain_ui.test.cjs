@@ -107,3 +107,53 @@ test('A failed speech request shows the server message and re-enables Speak', as
   assert.match(el('status').textContent, /quota/);
   assert.equal(el('speak').disabled, false);
 });
+
+function speechHarness() {
+  const calls = [];
+  const fetch = async (url, options) => {
+    calls.push({url, body: JSON.parse(options.body)});
+    return {ok: true, json: async () => ({audio: 'AAAA'})};
+  };
+  class FakeAudio {
+    addEventListener() {}
+    play() { return Promise.resolve(); }
+    pause() {}
+  }
+  const el = harness(fetch, {
+    atob: (text) => Buffer.from(text, 'base64').toString('binary'),
+    Uint8Array, Blob, Audio: FakeAudio,
+    URL: {createObjectURL: () => 'blob:test', revokeObjectURL() {}},
+  });
+  return {el, calls};
+}
+
+test('Automatic speaking is opt-in: nothing is sent to ElevenLabs unless it is on', async () => {
+  const {el, calls} = speechHarness();
+  el('sample').fire();
+  el('replay').fire();
+  await Promise.resolve();
+  assert.equal(calls.length, 0);
+  assert.equal(el('speak').disabled, false);
+});
+
+test('With automatic speaking on, each new answer is spoken once', async () => {
+  const {el, calls} = speechHarness();
+  el('auto').checked = true;
+  el('sample').fire();
+  el('replay').fire();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/api/speak');
+  assert.match(calls[0].body.text, /blue cable/);
+});
+
+test('The result badge names the outcome and clears with the result', () => {
+  const el = harness();
+  el('sample').fire();
+  el('replay').fire();
+  assert.equal(el('badge').hidden, false);
+  assert.equal(el('badge').textContent, 'Scripted demo');
+  el('clear').fire();
+  assert.equal(el('badge').hidden, true);
+});
+

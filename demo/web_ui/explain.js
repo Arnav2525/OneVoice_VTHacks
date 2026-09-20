@@ -20,6 +20,7 @@
     stopSpeech();
     spokenText = "";
     el("answer").textContent = "";
+    el("badge").hidden = true;
     el("quote").hidden = true;
     el("choices").replaceChildren();
     if (frozen) context.putImageData(frozen, 0, 0);
@@ -71,6 +72,11 @@
     el("quote").textContent = `“${quote}”`;
     el("quote").hidden = false;
     el("answer").textContent = result.explanation;
+    el("badge").textContent = scripted
+      ? "Scripted demo"
+      : { found: "Found", ambiguous: "Ambiguous", not_found: "Not found" }[result.status];
+    el("badge").setAttribute("data-status", scripted ? "found" : result.status);
+    el("badge").hidden = false;
     spokenText = result.explanation;
     el("status").textContent = scripted
       ? "Scripted CPU demo · no Gemini request or live audio"
@@ -81,6 +87,7 @@
           : "Gemini’s suggested reference · check it against the image";
     highlight(result.objects);
     controls();
+    if (el("auto").checked) speak();
     el("choices").replaceChildren();
     result.objects.forEach((object, index) => {
       const item = document.createElement(result.status === "ambiguous" ? "button" : "span");
@@ -187,7 +194,7 @@
     }
   });
 
-  el("speak").addEventListener("click", async () => {
+  async function speak() {
     if (!spokenText || speaking) return;
     const epoch = revision;
     const controller = new AbortController();
@@ -230,7 +237,9 @@
     } finally {
       clearTimeout(timeout);
     }
-  });
+  }
+
+  el("speak").addEventListener("click", speak);
 
   el("replay").addEventListener("click", () => {
     if (!sample || el("utterance").value.trim() !== sentence) return;

@@ -1397,5 +1397,11 @@ body[data-synthetic="false"] .target-label {
 .explain-disclosure, #explain-source { font-size: .85rem; color: #b5c9d3; }
 .explain-image { max-width: 800px; margin-top: 16px; }
 #explain-canvas { display: block; width: 100%; height: auto; border-radius: 16px; }
-#explain-quote { margin: 16px 0; padding-left: 16px; border-left: 2px solid #71f0dc; }
+#explain-quote { margin: 16px 0; padding-left: 16px; border-left: 2px solid #71f0dc; font-size: 1.05rem; }
+#explain-answer { font-size: 1.35rem; line-height: 1.5; font-weight: 500; margin: 12px 0; }
+.explain-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; border: 1px solid #71838c; color: #dbe9ef; }
+.explain-badge[data-status="found"] { border-color: #71f0dc; color: #71f0dc; }
+.explain-badge[data-status="ambiguous"] { border-color: #f0c771; color: #f0c771; }
+.explain-badge[data-status="not_found"] { border-color: #ef906c; color: #ef906c; }
+.explain-auto { display: inline-flex; gap: 8px; align-items: center; font-size: .9rem; color: #b5c9d3; cursor: pointer; }
 .explain-panel button:disabled { opacity: .45; cursor: not-allowed; }
